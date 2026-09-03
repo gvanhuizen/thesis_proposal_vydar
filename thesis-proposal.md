@@ -299,8 +299,18 @@ bring-up has stalled.*
   identified as feasible, against stored test frames, for controlled
   fps/accuracy/resource comparison.
 - Candidate configurations, informed by the SAD/Census survey and the
-  Expansionist's device-fit argument (§6): pure SAD, AD-Census, possibly a
-  reduced-path SGM if Track B's resource numbers allow.
+  Expansionist's device-fit argument (§6): **Census + fixed window** and
+  **pure SAD** as the two physically-built anchors; **AD-Census + cross-based
+  aggregation**; a **semi-dense seed-and-grow / ELAS-style** config
+  (Census/Hamming confident seeds → guided fill, bounded entirely on fabric) —
+  added by the 2026-09-03 council as the honest middle of the aggregation axis
+  under SWIR texture starvation, and the place the genuine contribution sits
+  (every surveyed seed-and-grow system used an ARM core to do the growing);
+  and possibly a reduced-path SGM if Track B's resource numbers allow. A
+  single-scale sparse key-point front end (FAST + binary descriptor + 1-D
+  along-row Hamming) is carried as a **synthesis-only characterised row**, not
+  a built pipeline — its data-dependent tail needs a CPU the A1 lacks
+  (2026-09-03 council; `../TODO.md` item 1).
 
 ### Track D — Live integration & real-hardware validation
 *Depends on both Track A Gate B and Track C's best-performing
@@ -385,6 +395,12 @@ addressed by any advisor round.
       very low-albedo surfaces), so the metric must report an invalid-pixel
       fraction, not only an error over valid pixels; and KITTI/Middlebury
       ground truth is visible-light — see the SWIR-benchmark item below.
+      The 2026-09-03 council added: write the **minimum fps + accuracy below
+      which the product story collapses** as an explicit, pre-agreed kill
+      criterion *now*. A characterization thesis can honestly conclude "this
+      part can't stream a dense matcher at spec" — but only if that bar exists
+      up front; otherwise the pressure to flatter the characterization is
+      irresistible.
 - [ ] **SWIR ground truth / benchmark for Track C.** Track C assumes stored
       KITTI/Middlebury frames, which are visible-light. The 2026-09-01 SWIR
       survey found no SWIR (or NIR/thermal) dense-disparity benchmark with
@@ -435,12 +451,42 @@ addressed by any advisor round.
       pixels and read them back for matching over the same ~97.6 MB/s
       channel. Fold this into the streaming-architecture design in Track
       A/C rather than treating read and write as independent budgets.
+- [ ] **Rectification: the vertical-misalignment budget `k` must be a signed
+      mechanical/optical spec, not a tolerance to design around.** (2026-09-03
+      council, `../stereo_camera_fpga/council/council-transcript-2026-09-03_1406.md`.)
+      A full per-pixel remap LUT is unusable in *both* memories — in BRAM it is
+      ≈ 2.6 MB ≈ 16× the ~160 KB budget; re-read from PSRAM every frame it is
+      ≈ 780 MB/s per camera / ~1.5 GB/s per stereo pair, ~15× the ~97.6 MB/s
+      ceiling. So rectification must be **computed on the fly** from ~a dozen
+      polynomial lens-distortion + rotation coefficients on CPE soft-multipliers,
+      fixed at calibration time, and **fused into the matching line buffer**
+      (the buffer feeding the cost function *is* the vertical-remap window).
+      `k` (raw rows N ± k needed per rectified row) does not shrink with the
+      storage choice; realistic free on-chip headroom after the matching window
+      `W` and disparity buffers is ~16–32 rows. Get the *real product's* stereo
+      head to commit to a worst-case residual (target ≤ ±16 rows, athermal
+      mount, alignment fixtured at assembly) held across temperature and
+      vibration — by ~week 4. If `k` cannot be bounded small enough to leave
+      room for `W` and `D`, "this sensor + this part can't stream a dense
+      matcher" is a legitimate kill finding (needs the minimum-fps/accuracy bar
+      above defined first). The `k`-vs-`W`-vs-`D` BRAM-budget Pareto curve, and
+      the sustained multiplies/s the fabric delivers at pixel rate, are
+      themselves Track B characterisation results. The Pi rig's own calibration
+      numbers are moot — it is throwaway test scaffolding. Full detail:
+      `../TODO.md` item 4.
 - [ ] **SWIR camera LVDS interface vs. GateMate LVDS-GPIO/SerDes fit** —
       the QDI sensor's LVDS lane count and per-lane bit rate haven't been
       checked against GateMate's DDR-GPIO LVDS timing (no max LVDS toggle
       rate found in the CCGM1A1 datasheet's electrical tables) or against
       whether the die's separate 5.0 Gb/s SerDes block would be needed
       instead. Concrete next step before Track A camera bring-up (Gate B).
+      **2026-09-03 council sharpened this:** one 5.0 Gb/s SerDes lane carries
+      roughly a *single* SWIR stream (~500 MB/s usable), not two — so two-camera
+      ingest needs a second path (DDR-GPIO LVDS, reduced fps/bit-depth, or a
+      dual-lane CCGM1A2). And the two sensors must be **line-locked**; if they
+      are not, realigning them costs a frame buffer → PSRAM staging → the
+      streaming premise collapses before any dense/sparse or rectification
+      choice matters. This sits upstream of both.
 
 ## 8. Decision log
 
@@ -535,6 +581,33 @@ addressed by any advisor round.
   the FPGA repo's `research/` and `council/` files were repointed to
   `../stereo_camera_fpga/...` since this file now lives one level out.
   `thesis-proposal2.md` deleted.
+- **2026-09-03:** Two council sessions on the sparse-vs-dense choice and on
+  rectification (`../stereo_camera_fpga/council/council-transcript-2026-09-03_1156.md`
+  and `...-2026-09-03_1406.md`). Verdicts:
+  - **Dense (or semi-dense) is the thesis spine.** The sparse key-point front
+    end is carried as a synthesis-only characterised row, not a built pipeline —
+    its data-dependent tail (keypoint-list scatter/gather, NN match, RANSAC,
+    triangulation) is a second RTL subsystem with no dense analogue that every
+    surveyed FPGA design offloads to a CPU the A1 lacks; sparse also saves only
+    non-binding resources; and SWIR texture starvation gives it too few
+    keypoints with too-weak evidence in the target scenes. The real axis is
+    "how much aggregation the fabric affords," with sparse as its
+    zero-aggregation endpoint and **semi-dense seed-and-grow / ELAS-style
+    support points added to the Track C list** as the honest middle (§4).
+  - **Rectification.** A full per-pixel LUT is unusable in BRAM *and* in PSRAM;
+    compute it on the fly from polynomial coefficients, fixed at calibration
+    time, fused into the matching line buffer. The vertical-misalignment budget
+    `k` must be a *signed mechanical spec* (target ≤ ±16 rows), not a tolerance;
+    resolve by ~week 4. Added to §7.
+  - **Blind spots re-surfaced** (added/sharpened in §7): one 5.0 Gb/s SerDes
+    lane ≠ two camera streams, and two rolling-shutter sensors must be
+    line-locked or a frame buffer (→ PSRAM → streaming collapse) is forced; no
+    SWIR stereo dense-disparity benchmark with ground truth; timing closure on
+    the young `nextpnr-himbaechel` flow, not CPE/BRAM count, is the real
+    feasibility gate; a minimum-fps/accuracy kill criterion must be written down
+    before Track C.
+  - The 2026-09-01 and 2026-09-02 council sessions (implementation-plan and
+    disparity-doc reviews) are still not individually folded into this log.
 
 ---
 
