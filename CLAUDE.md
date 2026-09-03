@@ -4,24 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This is a small, standalone git repo whose only job is to hold
-`thesis-proposal.md`, the **single planning document** for a master's thesis
-built from two separate implementations that live in sibling directories on
-disk, each their own git repo:
+This is a small, standalone git repo holding the thesis planning documents for a
+master's thesis built from two separate implementations that live in sibling
+directories on disk, each their own git repo:
 
 - `../stereo_camera/` (github.com/gvanhuizen/stereo_camera)
 - `../stereo_camera_fpga/` (github.com/gvanhuizen/stereo_camera_fpga)
 
-There is no source code here, no build/lint/test tooling, and none is
-expected. As of 2026-09-03 `thesis-proposal.md` holds **both** the
-combined-scope framing (header + §0: which half is primary, how they relate)
-**and** the full detailed FPGA-track plan (§1–§8). It used to be two files
-(`thesis-proposal.md` + `thesis-proposal2.md`); they were merged. Detail for
-the supporting camera-rig half is still not duplicated here — it lives in
-`../stereo_camera/`.
+There is no source code here, no build/lint/test tooling, and none is expected.
+Two tracked files:
 
-(`implementation-plan.md`, also in this folder, is a separate untracked
-working doc — not part of the proposal.)
+- **`thesis-proposal.md`** — the **single living planning document**. As of
+  2026-09-03 it holds **both** the combined-scope framing (header + §0: which
+  half is primary, how they relate) **and** the full detailed FPGA-track plan
+  (§1–§8). It used to be two files (`thesis-proposal.md` + `thesis-proposal2.md`);
+  they were merged. Detail for the supporting camera-rig half is not duplicated
+  here — it lives in `../stereo_camera/`.
+- **`implementation-plan.md`** — the opinionated layer on top of the proposal: a
+  consolidated spec sheet, the constraint → viable-technique chain, and a
+  justified shortlist of configurations to build (Config 1 Census, Config 2 SAD,
+  Config 3 AD-Census, Config 4 dual-path SGM). Draft, council-reviewed
+  2026-09-01. Refines the proposal's Track C candidate list; does not replace the
+  Track structure or schedule.
 
 ## Directory-layout dependency
 
@@ -37,8 +41,16 @@ filesystem paths.
 - `thesis-proposal.md` in this folder is **the** authoritative planning
   document for the thesis — both the combined framing (header + §0) and the
   detailed FPGA-track plan (§1–§8: research question, hardware/sensor
-  decisions, bandwidth arithmetic, Track A–D structure, gates/kill-criteria,
-  fallback thesis, decision log). Update FPGA-track detail here.
+  decisions, bandwidth arithmetic with the VERIFIED/VENDOR-CONFIRMED/ESTIMATED
+  legend, Track A–D structure, gates/kill-criteria, fallback thesis, decision
+  log). Update FPGA-track detail here.
+- `implementation-plan.md` in this folder is authoritative for the **config
+  shortlist** — which techniques get built and why.
+- `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+  is the neutral GateMate-A1-vs-surveyed-literature reference matrix that both
+  docs above draw on. `../stereo_camera_fpga/research/` holds the paper surveys
+  (`summaries/`) and the other synthesis docs; `../stereo_camera_fpga/council/`
+  holds the `/llm-council` deliberation snapshots referenced in the decision log.
 - `../stereo_camera/README.md` and `../stereo_camera/literature/NOTES.md`
   remain authoritative for the camera-rig work and baseline/accuracy
   literature — that half's detail is not copied into `thesis-proposal.md`.

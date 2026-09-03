@@ -10,8 +10,9 @@ This document is the synthesis step between the research and the RTL. It does
 four things, in order:
 
 1. Consolidates the GateMate A1 / Olimex EVB / SWIR-sensor specs into one place
-   (§2) — currently spread across `CLAUDE.md`, `thesis-proposal.md` §2/§3, and
-   `research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`.
+   (§2) — currently spread across `../stereo_camera_fpga/CLAUDE.md`,
+   `thesis-proposal.md` §2/§3, and
+   `../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`.
 2. States the pros and cons of this device versus the FPGAs used in the surveyed
    literature (§3–§4).
 3. Walks the logical chain from each hardware constraint to which stereo-matching
@@ -22,11 +23,11 @@ four things, in order:
 It is written to be read start-to-finish on its own. Two companion files go
 deeper on specific parts and are not required reading here:
 
-- `thesis_proposal/hardware-and-technique-comparison.md` — the neutral reference
-  matrix: full device table, a 13-technique catalogue with per-technique "fit"
-  verdicts, an exhaustive constraints/gaps list. This document is the opinionated
-  layer on top of it.
-- `thesis_proposal/thesis-proposal.md` — the research-process plan (Track A–D,
+- `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+  — the neutral reference matrix: full device table, a 13-technique catalogue
+  with per-technique "fit" verdicts, an exhaustive constraints/gaps list. This
+  document is the opinionated layer on top of it.
+- `thesis-proposal.md` (this folder) — the research-process plan (Track A–D,
   gates, kill criteria, fallback thesis, open items). The shortlist in §6 here
   **refines** that document's Track C candidate list; it does not replace the
   Track structure or the schedule.
@@ -149,8 +150,8 @@ any residual PSRAM use above works against a tight capacity budget too.
 
 ## 3. The literature baseline — what we are comparing against
 
-The two surveys in `research/summaries/` cover 14 papers. Every one runs on a
-device from this list:
+The two surveys in `../stereo_camera_fpga/research/summaries/` cover 14 papers.
+Every one runs on a device from this list:
 
 | Device family | Hard DSP/MAC | On-chip BRAM | Hard CPU | Toolchain |
 |---|---|---|---|---|
@@ -426,14 +427,17 @@ duplicated here, only the ones that bear directly on §6:
 
 ## Sources
 
-- `research/summaries/2026-08-05-fpga-stereo-vision-pipelines.md`
-- `research/summaries/2026-08-05-sad-census-stereo-matching.md`
-- `research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`
-- `research/stereo-vision-techniques-explained.md`
-- `research/top-5-papers-to-read.md`
-- `thesis_proposal/hardware-and-technique-comparison.md`
-- `thesis_proposal/thesis-proposal.md`
-- `council/council-transcript-2026-08-05_1752.md`,
-  `council/council-transcript-2026-08-05_2141.md`,
-  `council/council-transcript-2026-08-06_1043.md`
-- Repo top-level `CLAUDE.md`
+(paths relative to this folder; the FPGA-repo files are in the sibling
+`../stereo_camera_fpga/`)
+
+- `../stereo_camera_fpga/research/summaries/2026-08-05-fpga-stereo-vision-pipelines.md`
+- `../stereo_camera_fpga/research/summaries/2026-08-05-sad-census-stereo-matching.md`
+- `../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`
+- `../stereo_camera_fpga/research/synthesis/stereo-vision-techniques-explained.md`
+- `../stereo_camera_fpga/research/synthesis/top-5-papers-to-read.md`
+- `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+- `thesis-proposal.md` (this folder)
+- `../stereo_camera_fpga/council/council-transcript-2026-08-05_1752.md`,
+  `../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`,
+  `../stereo_camera_fpga/council/council-transcript-2026-08-06_1043.md`
+- `../stereo_camera_fpga/CLAUDE.md` and the `thesis/` top-level `CLAUDE.md`
