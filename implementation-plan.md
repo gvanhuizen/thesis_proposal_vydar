@@ -411,6 +411,18 @@ ascending build risk.
   decision.
 - *Main risk:* SWIR texture starvation → too few / too-weak key-points in
   exactly the scenes the product targets. Config 4 is the hedge if so.
+- *Related use — keypoint as a pre-gate, not a standalone matcher:* the same
+  detector can gate what enters a dense few-plane trigger chain (only key-point
+  pixels run the plane-sweep + FP filters) instead of producing the output
+  itself. **Ups:** removes most textureless-FP machinery by construction, can
+  shrink the K-plane Hamming bank, stays coreless under a fixed key-point cap.
+  **Downs:** motion blur (600 m/s ego-motion attenuates corner content — Census
+  degrades gracefully, a blurred corner does not survive) and the thin-statistics
+  follow-on (2–4 frames of warning; a handful of key-points per object starves
+  the spatial/temporal FP tests that a dense vote field keeps fed). Not a sole
+  front-end on FN grounds; viable as an additive fast-path channel or a
+  low-key-point exception path. Full ups/downs in
+  `../stereo_camera_fpga/design/CLAUDE.md` (keypoint pre-gate variant).
 
 **Config 6 (optional) — dual-path SGM via dependency-relaxation. *(only if Track B shows headroom)***
 - *What:* horizontal + vertical path aggregation only, recursion reading the
