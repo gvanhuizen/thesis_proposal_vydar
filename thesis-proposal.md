@@ -1,15 +1,38 @@
-# Thesis Proposal: Real-Time Stereo Depth
+# Thesis Proposal: Real-Time Stereo Proximity Detection on a DSP-less, Open-Toolchain FPGA
 
 **Status:** draft — not yet submitted to advisor. Combined-scope framing and
 the detailed FPGA-track plan merged into this one file on 2026-09-03 (see
 decision log); FPGA-track structure was restructured per council review on
-2026-08-05.
+2026-08-05; research question re-centred on the real product goal on 2026-09-03,
+then the product was made the organising goal and this document demoted to the
+academic artefact behind [`product-plan.md`](./product-plan.md) later the same
+day (see decision log). **The research question (§1) and the title above are
+provisional** pending the approach selection driven by `product-plan.md`.
 **Last updated:** 2026-09-03
 **Clock:** 30 weeks, shared with startup product development
 
-This is the single living planning document for the thesis. The thesis is
-built from two implementations tracked as separate git repos on disk,
-siblings of this folder:
+**Product goal (drives this proposal):** a high-speed **near/far
+distance-threshold alarm** on the GateMate A1 + passive SWIR stereo head — a
+boolean or zoned signal when an object enters a configurable distance band,
+**not** a distance measurement and **not** a dense depth map. The output spec,
+latency budget and the safety-critical false-negative metric live in
+[`product-plan.md`](./product-plan.md) §2. The research framing below is applied
+to whichever engineering approach `product-plan.md`'s search (its §4–§5)
+selects.
+
+This is the **academic artefact** of the project. The primary driver — the
+product goal, the threshold-alarm output spec, the open engineering-approach
+search and how its winner is chosen, and the 30-week milestone / gate / kill
+schedule — is [`product-plan.md`](./product-plan.md) in this folder. This
+document wraps that work in the research framing the advisor and committee see,
+cross-linked to `product-plan.md` and finalised once the approach search
+(Track C / M3) lands. It stays authoritative for the decided hardware / sensor
+spec (§2), the bandwidth arithmetic with the verification legend (§3), the
+research-method rationale for the track structure (§4), the fallback thesis
+(§5), the open-items list (§7), and the chronological decision log (§8).
+
+The thesis is built from two implementations tracked as separate git repos on
+disk, siblings of this folder:
 
 - **`../stereo_camera_fpga/`** — real-time stereo matching on a Cologne Chip
   GateMate A1 FPGA (DSP-less, open-toolchain). Expected **primary research
@@ -68,55 +91,66 @@ answer, not to prematurely settle:
 
 ## 1. Research question
 
-> How does removing a hardened DSP/MAC array and abundant fast BRAM reshape
-> the achievable trade-off surface (cost function × aggregation strategy ×
-> resolution/disparity range) for real-time stereo matching?
+**Provisional — to be finalised around the engineering approach that
+[`product-plan.md`](./product-plan.md)'s search selects (Track C / M3).** The
+platform (open-toolchain, DSP-less FPGA + passive SWIR stereo) is uncharacterised
+enough that a defensible research question can be framed around any of the
+candidate approaches in `product-plan.md` §4; the statement below is the current
+best formulation, not a commitment.
 
-This is the thesis's spine (per the council's First Principles Thinker,
-adopted in synthesis). It is **not** "which matching algorithm is fastest" —
-that's benchmarking, already partially answered by existing literature
-(see `../stereo_camera_fpga/research/summaries/`), and doesn't by itself satisfy the university's
-requirement for genuine research contribution.
+> On a DSP-less, open-toolchain FPGA (Cologne Chip GateMate A1) fed by a SWIR
+> sensor, which stereo-correspondence approach — **dense, semi-dense, or
+> sparse** — best delivers real-time, high-frame-rate **close-range detection**
+> (is the camera near an object, and roughly how near), under the
+> streaming/line-buffer constraint the platform's memory forces?
 
-Framing it this way means the resource-characterization work (Track B below)
-*is* the experiment, not a preliminary step before the "real" implementation
-work.
+Supporting sub-questions:
+
+- What is *feasible* at all on this device class — which cost function ×
+  density × resolution/disparity-range configurations close timing and fit the
+  ~160 KB BRAM budget on the young `nextpnr-himbaechel` flow (Track A/B)?
+- Of the feasible ones, which best meets the proximity-detection objective on
+  frame rate, detection reliability, and resource cost (Track C)?
+- Does the winning configuration hold up end-to-end on live SWIR hardware
+  (Track D)?
+
+**Why this is a genuine research contribution, not an implementation exercise.**
+The novelty is the platform, not a new algorithm. No prior real-time FPGA stereo
+work runs on an open-toolchain, DSP-less part with this little on-chip memory,
+and none uses a SWIR sensor — the surveyed designs all use large
+Xilinx/Altera devices with hardened DSP arrays and megabytes of BRAM
+(`../stereo_camera_fpga/research/summaries/`). So the achievable
+feasibility/quality/throughput envelope for stereo correspondence on this
+device+sensor combination is genuinely uncharacterised, and selecting the
+approach that best serves a concrete objective (proximity detection) from
+synthesis-backed measurements is an evaluation result the literature does not
+contain. "First open-toolchain stereo bitstream" and "first real-time SWIR FPGA
+stereo depth" are citable secondary outcomes regardless of the fps result (§6).
+
+It is **not** abstract algorithm benchmarking, and it is **not** a
+characterisation of a cost × aggregation × resolution *trade-off surface* (that
+earlier framing is in the §8 decision log). Whichever approach wins the
+`product-plan.md` search, the research question is finalised around it before
+submission.
 
 ### 1.1 Type of contribution
 
-The question above is deliberately framed to make the thesis a
-*characterization* study rather than a *build* exercise. Two vocabularies a
-committee is likely to use, and where each Track sits in them:
+The thesis **broadens** — it carries known stereo-correspondence techniques
+(dense Census/SAD, semi-dense seed-and-grow, bounded sparse key-point matching)
+onto a DSP-less, BRAM-starved, open-toolchain FPGA with a SWIR sensor, for a
+distance-threshold-alarm objective, and reports what transfers, what is
+feasible, and what wins. It **deepens** where it measures resource / timing
+behaviour undocumented for this device class (M2). It does **not** innovate a
+new matching algorithm and does not need to — the novelty is carrying real-time
+stereo onto this platform at all, and the systematic selection of the best
+approach for the goal. The load-bearing contribution rests on M2 + M3
+(feasibility + evaluation on an uncharacterised platform), which is also what
+the fallback thesis (§5) protects.
 
-**Deepen / broaden / innovate** (common in EU/NL programs):
-
-- Track B **deepens** — takes known stereo-matching techniques and
-  characterizes their resource/timing behavior more precisely, on a device
-  class where that behavior is undocumented.
-- Track C **broadens** — applies those techniques in a new context
-  (DSP-less, BRAM-starved, open-toolchain) and reports what transfers.
-- No Track **innovates** a new matching algorithm, and none needs to — the
-  contribution is the trade-off surface, not a new cost function.
-
-**Shaw's research-question taxonomy** ("Writing Good Software Engineering
-Research Papers", ICSE 2003), by Track:
-
-| Track | Question type | Question |
-|---|---|---|
-| A | Feasibility | Can a non-trivial stereo design be closed and run on a GateMate A1 via the open toolchain at all? |
-| B | Characterization / generalization | How does the cost × aggregation × resolution trade-off surface change once the hardened DSP/MAC array and fast BRAM are removed? |
-| C | Evaluation / selection | Of the feasible configurations, which wins on fps / accuracy / resource, and by how much? |
-| D | Feasibility (integration) | Does the best configuration hold up end-to-end on live hardware? |
-
-The university's "genuine research contribution, not an implementation
-exercise" requirement is, in these terms, a requirement that the thesis
-**rest on Track B (characterization)**, with A / C / D as support and
-validation. A thesis resting on Track A alone would be a
-feasibility/implementation result — necessary, not sufficient. The fallback
-thesis (§5) is deliberately Track B + C, i.e. characterization + evaluation,
-so the load-bearing contribution survives losing the hardware. State this
-explicitly to the advisor, in whichever of the two vocabularies the
-committee uses.
+The full committee-vocabulary mapping (deepen / broaden / innovate; Shaw's
+research-question taxonomy, by track) is **deferred** until the approach is
+chosen — see [Appendix B](#appendix-b-contribution-type-mapping-deferred) and
+`product-plan.md` §7.
 
 ## 2. Target hardware & sensor (decided)
 
@@ -239,106 +273,62 @@ open item below. This no longer threatens the architectural conclusion or
 the part identification, only the third-decimal precision of the ~97.6
 MB/s figure.
 
-## 4. Plan structure
+## 4. Plan structure (research-method rationale)
 
-The original draft ran everything as one sequential 30-week pipeline with a
-single 3-week bring-up phase blocking all downstream work. The council's
-unanimous critique: this makes the single highest-uncertainty item (first
-hardware bring-up, unproven toolchain) a hard blocking dependency for
+The **operational** schedule — the ASCII timeline, the M1–M4 milestones, Gate
+A/B/C dates, kill criteria, and the kill findings — lives in
+[`product-plan.md`](./product-plan.md) §6. This section records only *why* the
+work is structured that way, for the advisor conversation.
+
+The original draft (Appendix A) ran everything as one sequential 30-week
+pipeline with a single 3-week bring-up phase blocking all downstream work. The
+council's unanimous critique: this makes the single highest-uncertainty item
+(first hardware bring-up, unproven toolchain) a hard blocking dependency for
 everything else, with no defined fallback if it slips.
 
-Restructured into two independently-gated parallel tracks plus two
-sequential tracks that depend on both:
+The restructure (per
+`../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`) splits it
+into two independently-gated parallel tracks plus two sequential ones, mapped in
+`product-plan.md` §6 as milestones M1–M4:
 
-```
-Week:        1    2    3    4    5    6  ...  16       24       30
-Track A:  [--- bring-up ---][Gate A][-- camera bring-up --][Gate B]
-Track B:  [-- synthesis-only resource characterization --][Gate C]
-Track C:                          [-- implement & benchmark configs --]
-Track D:                                      [-- live integration --][write-up]
-```
-
-### Track A — Toolchain + hardware bring-up
-*Needs real silicon. Founder's highest personal-risk item (never flashed
-hardware before, unproven toolchain on this device).*
-
-- **Gate A (target: end of week 4–5, not week 3):** a *non-trivial* design
-  (not blinky) synthesized via yosys/nextpnr-himbaechel, placed & routed,
-  flashed, and producing observable output on real hardware. JTAG/programmer
-  flow confirmed repeatable.
-- **Gate B (target: end of week 8):** SWIR camera streams pixels into BRAM,
-  readable back out over UART/VGA, at a measured (not assumed) sustained
-  rate.
-- **Kill criterion:** if Gate A isn't hit by week 6, or Gate B isn't hit by
-  week 9, live-camera integration (Track D) is descoped to a stretch goal
-  and the thesis runs on the fallback described in §5.
-- Before burning solo weeks rediscovering toolchain quirks: check for
-  GateMate/nextpnr-himbaechel community prior art (forums, Cologne Chip
-  reference designs, existing example repos) — flagged as a blind spot no
-  one addressed in the council review.
-
-### Track B — Synthesis-only resource characterization
-*Needs no working silicon — can start day one, runs in parallel with Track A.*
-
-- This is the thesis's actual experiment (§1). Must produce
-  **synthesis-backed (place-and-route) numbers**, not spreadsheet
+- **M1 / Track A — toolchain + hardware bring-up.** Needs real silicon; the
+  founder's highest personal-risk item (first time flashing a board). Gated so a
+  slip descopes live integration rather than blocking the thesis.
+- **M2 / Track B — synthesis-only feasibility sweep.** Needs no working silicon,
+  starts day one. This is where the research evidence is generated: it must
+  produce **synthesis-backed place-and-route numbers**, not spreadsheet
   arithmetic — the council was explicit that napkin math here is "dressed-up
-  engineering," not a defensible research artifact.
-- Sweep candidate configurations (cost function × aggregation strategy ×
-  resolution/disparity range) through yosys/nextpnr and record CPE
-  utilization, achievable clock, BRAM usage for each.
-- **Gate C (target: end of week 10):** enough synthesis sweeps done to
-  identify 2–3 feasible configurations to carry into Track C.
-
-### Track C — Implement & benchmark feasible configurations
-*Depends on Track B's Gate C. Does not require Track A to have succeeded —
-can run against stored test-vector frames (KITTI/Middlebury) even if live
-bring-up has stalled.*
-
-- Weeks ~10–20: implement and benchmark the 2–3 configurations Track B
-  identified as feasible, against stored test frames, for controlled
-  fps/accuracy/resource comparison.
-- Candidate configurations, informed by the SAD/Census survey and the
-  Expansionist's device-fit argument (§6): **Census + fixed window** and
-  **pure SAD** as the two physically-built anchors; **AD-Census + cross-based
-  aggregation**; a **semi-dense seed-and-grow / ELAS-style** config
-  (Census/Hamming confident seeds → guided fill, bounded entirely on fabric) —
-  added by the 2026-09-03 council as the honest middle of the aggregation axis
-  under SWIR texture starvation, and the place the genuine contribution sits
-  (every surveyed seed-and-grow system used an ARM core to do the growing);
-  and possibly a reduced-path SGM if Track B's resource numbers allow. A
-  single-scale sparse key-point front end (FAST + binary descriptor + 1-D
-  along-row Hamming) is carried as a **synthesis-only characterised row**, not
-  a built pipeline — its data-dependent tail needs a CPU the A1 lacks
-  (2026-09-03 council; `../TODO.md` item 1).
-
-### Track D — Live integration & real-hardware validation
-*Depends on both Track A Gate B and Track C's best-performing
-configuration. Stretch goal, not the thesis's load-bearing requirement —
-per the fallback in §5.*
-
-- Weeks ~20–26: integrate the best-performing configuration with the live
-  SWIR camera pair end-to-end (capture, rectification, matching, output)
-  and validate real fps on hardware, honoring the streaming-architecture
-  constraint from §3.
+  engineering," not a defensible research artefact.
+- **M3 / Track C — implement & benchmark the feasible set.** Runs against stored
+  test vectors, so it does not depend on M1 succeeding. This is the selection
+  experiment: M2 narrows the `product-plan.md` §4 candidate menu to the feasible
+  configurations; M3 builds and benchmarks the survivors on equal footing
+  against the `product-plan.md` §5 criteria, and the approach is chosen here.
+  This supersedes the 2026-09-03 council's "dense is the thesis spine; sparse is
+  a synthesis-only row, off-thesis" verdict (see §8) — that verdict rested on
+  the product wanting a dense depth map, which it does not.
+- **M4 / Track D — live integration.** Depends on M1 Gate B and the M3 winner.
+  A stretch goal, not load-bearing — per the fallback in §5.
 
 ### Write-up
-- Weeks ~26–30: framed around the research question in §1 — the
-  trade-off-surface characterization is the core result regardless of
-  whether Track D lands; live-hardware fps is presented as validation/
-  upper-bound confirmation, not as the thing being defended.
+Weeks ~26–30: framed around the research question in §1, finalised around the
+M3-selected approach. The feasibility + approach-selection result is the core
+contribution regardless of whether M4 lands; live-hardware fps is validation,
+not the thing defended.
 
 ## 5. Fallback thesis (must be pre-approved by advisor before week 1)
 
-If Track A stalls past its Gate A/B kill criteria, or Track D's live
-integration doesn't land in time: the thesis stands on **Track B + Track C
-alone** — a synthesis/simulation-only characterization of the cost
-function × aggregation × resolution/disparity-range trade-off surface on a
-DSP-less, BRAM-constrained, open-toolchain device, benchmarked against
-stored test vectors. This is the council's most load-bearing structural
-recommendation (3-of-5 advisors flagged the missing-fallback gap
-independently) — the fallback must be defined and confirmed with the
-advisor/committee *before* week 1, not invented under pressure at week 5.
+If M1 (Track A) stalls past its Gate A/B kill criteria, or M4 (Track D) live
+integration doesn't land in time: the thesis stands on **M2 + M3 (Track B +
+Track C) alone** — a synthesis/simulation-only feasibility study and selection
+of the best correspondence approach (dense / semi-dense / sparse) for real-time
+proximity detection on a DSP-less, BRAM-constrained, open-toolchain device,
+benchmarked against stored test vectors. The operational form of this fallback,
+and its kill findings, are in [`product-plan.md`](./product-plan.md) §6. This is
+the council's most load-bearing structural recommendation (3-of-5 advisors
+flagged the missing-fallback gap independently) — the fallback must be defined
+and confirmed with the advisor/committee *before* week 1, not invented under
+pressure at week 5.
 
 **Status: not yet confirmed with advisor.**
 
@@ -384,32 +374,33 @@ addressed by any advisor round.
 
 **FPGA-track items:**
 
-- [ ] **Accuracy/disparity-quality bar.** 600fps is trivially achievable by
-      degrading resolution/disparity range into meaninglessness. Define what
-      depth-quality metric (e.g. bad-pixel-percentage against KITTI/
-      Middlebury ground truth, at what threshold) the thesis defends
-      alongside fps, before Track C benchmarking starts. The 2026-09-01 SWIR
-      survey (`../stereo_camera_fpga/research/summaries/2026-09-01-swir-stereo-depth-perception.md`)
-      adds two constraints: IR/cross-spectral stereo work shows matching
-      failure is *spatially structured by material* (specular metal, glass,
-      very low-albedo surfaces), so the metric must report an invalid-pixel
-      fraction, not only an error over valid pixels; and KITTI/Middlebury
-      ground truth is visible-light — see the SWIR-benchmark item below.
-      The 2026-09-03 council added: write the **minimum fps + accuracy below
-      which the product story collapses** as an explicit, pre-agreed kill
-      criterion *now*. A characterization thesis can honestly conclude "this
-      part can't stream a dense matcher at spec" — but only if that bar exists
-      up front; otherwise the pressure to flatter the characterization is
-      irresistible.
+- [ ] **Proximity-detection quality bar — resolve before M3.** The metric
+      definitions and their weighting live in [`product-plan.md`](./product-plan.md)
+      §5 (detection reliability at the band edge; the safety-critical
+      false-negative rate on close objects; false-positive rate; latency;
+      minimum valid-match density). The research-side requirement this item
+      tracks: the **minimum fps + detection reliability below which the product
+      story collapses** must be written down as an explicit, pre-agreed kill
+      criterion *before* M3 benchmarking. The thesis can honestly conclude "this
+      part + this sensor can't do real-time proximity detection at spec with any
+      candidate approach" — but only if that bar predates the result. The
+      2026-09-01 SWIR survey
+      (`../stereo_camera_fpga/research/summaries/2026-09-01-swir-stereo-depth-perception.md`)
+      adds that matching failure is *spatially structured by material* (specular
+      metal, glass, very low-albedo surfaces), so the metric must report where
+      detection is unreliable, not just an aggregate rate.
 - [ ] **SWIR ground truth / benchmark for Track C.** Track C assumes stored
       KITTI/Middlebury frames, which are visible-light. The 2026-09-01 SWIR
-      survey found no SWIR (or NIR/thermal) dense-disparity benchmark with
-      comparable ground truth. Options from the literature: (a) evaluate on
-      visible-light data and argue the resource/timing surface transfers
-      (the cost × aggregation surface is largely sensor-agnostic; disparity
-      *quality* is not), (b) a small SWIR rig with time-synced LiDAR for
-      sparse metric ground truth, (c) synthetic SWIR. Pick one and record
-      the caveat before Track C benchmarking.
+      survey found no SWIR (or NIR/thermal) disparity benchmark with comparable
+      ground truth. Options from the literature: (a) evaluate on visible-light
+      data and argue the resource/timing results transfer (feasibility and
+      resource cost are largely sensor-agnostic; detection *reliability* is
+      not), (b) a small SWIR rig with time-synced LiDAR (or simply
+      known-distance targets at measured stand-off) for metric ground truth —
+      this is lighter for a proximity-detection metric than for dense
+      disparity, since only the near-field distance-to-object needs to be
+      known, (c) synthetic SWIR. Pick one and record the caveat before Track C
+      benchmarking.
 - [ ] **Thesis disclosure vs. startup IP.** A public master's thesis (RTL,
       methodology, results) sits next to a startup's proprietary core,
       sharpened by the SWIR sensor decision shifting product framing toward
@@ -467,9 +458,11 @@ addressed by any advisor round.
       head to commit to a worst-case residual (target ≤ ±16 rows, athermal
       mount, alignment fixtured at assembly) held across temperature and
       vibration — by ~week 4. If `k` cannot be bounded small enough to leave
-      room for `W` and `D`, "this sensor + this part can't stream a dense
-      matcher" is a legitimate kill finding (needs the minimum-fps/accuracy bar
-      above defined first). The `k`-vs-`W`-vs-`D` BRAM-budget Pareto curve, and
+      room for `W` and `D` for *any* of the candidate approaches (including the
+      sparse and semi-dense ones, which need fewer rows), "this sensor + this
+      part can't stream real-time proximity detection" is a legitimate kill
+      finding (needs the minimum-fps/detection bar above defined first). The
+      `k`-vs-`W`-vs-`D` BRAM-budget Pareto curve, and
       the sustained multiplies/s the fabric delivers at pixel rate, are
       themselves Track B characterisation results. The Pi rig's own calibration
       numbers are moot — it is throwaway test scaffolding. Full detail:
@@ -608,6 +601,74 @@ addressed by any advisor round.
     before Track C.
   - The 2026-09-01 and 2026-09-02 council sessions (implementation-plan and
     disparity-doc reviews) are still not individually folded into this log.
+- **2026-09-03:** Research question re-centred on the real product goal
+  (founder direction). The goal was clarified: the product is **real-time,
+  high-fps detection of whether the camera is close to an object** —
+  proximity/near-object detection — **not** a dense per-pixel depth map, and a
+  sparse or low-density output is acceptable (and, given the streaming budget,
+  preferable). Consequences applied through §§1, 1.1, 4, 5, 7:
+  - §1's research question is no longer "how does removing the DSP/MAC array
+    reshape the cost × aggregation × resolution/disparity *trade-off surface*."
+    It is now "which correspondence approach — dense, semi-dense, or sparse —
+    best delivers real-time proximity detection on this platform." Aggregation
+    is one option among several, not a mandatory axis; dropping it entirely is
+    a valid answer.
+  - The "genuine research contribution" argument now rests on the **novel
+    platform** (first real-time stereo on an open-toolchain, DSP-less,
+    ~160 KB-BRAM FPGA; first real-time SWIR FPGA stereo) plus the systematic
+    feasibility + selection study, not on characterising an abstract surface.
+    §1.1 re-pointed accordingly (Tracks B + C are the spine; contribution type
+    is *broaden* + *feasibility/evaluation*, not *characterization*).
+  - **Supersedes the earlier 2026-09-03 council verdict** that "dense (or
+    semi-dense) is the thesis spine" and that the sparse key-point front end is
+    "a synthesis-only characterised row, not a built pipeline." Sparse (Config
+    5) and semi-dense seed-and-grow (Config 4) are now **built and benchmarked
+    Track C configurations on equal footing with dense Census/SAD.** The
+    council's *engineering* caveats still hold and are respected in the config
+    spec: the built sparse pipeline is **bounded** (hard key-point cap, spatial
+    buckets, deterministic LRC + ordering + fixed-epipolar-offset verification,
+    sub-pixel) with **no RANSAC / triangulation / variable-length scatter-gather
+    tail** — and the proximity-detection goal is what removes the need for that
+    tail, since "is something close" needs a bounded set of near matches, not a
+    point cloud. The council transcripts themselves are point-in-time snapshots
+    and were left unedited.
+  - §7's "accuracy/disparity-quality bar" item became the **proximity-detection
+    quality bar** (min stand-off distance, false-negative rate for close
+    objects, false-positive rate, latency, min match density), and the
+    kill-criterion is now "minimum fps + detection reliability below which the
+    product story collapses."
+- **2026-09-03:** Product re-prioritised as the **organising goal** (founder
+  direction) — the previous entry's proximity reframe kept a research question
+  as the spine; this one inverts it. The product is now the driver: a
+  **high-speed near/far distance-threshold alarm** (boolean or zoned; not a
+  distance measurement, not a dense depth map) via passive SWIR stereo on the
+  fixed GateMate A1 hardware. Consequences:
+  - Created [`product-plan.md`](./product-plan.md) as the **primary driver
+    document** — it owns the product goal, the threshold-alarm output spec, the
+    open engineering-approach search (its §4), the concrete selection method
+    (its §5), and the 30-week milestone / gate / kill-finding schedule (its §6,
+    relocated from §4 here as milestones M1–M4).
+  - **This document is demoted to the academic artefact** wrapped around the
+    chosen approach. Header, line 20, and both CLAUDE.md authority registers
+    (top-level and `thesis_proposal_vydar/`) repointed so `product-plan.md` is
+    the entry point; `README.md`, `TODO.md`, `stereo_camera_fpga/CLAUDE.md`
+    repointed to match; `implementation-plan.md` reframed as "the RTL menu the
+    approach search evaluates."
+  - **§1 research question and the title are marked provisional**, to be
+    finalised around whichever approach M3 selects. The trade-off-surface
+    litigation paragraph in §1 was trimmed (history is in this log).
+  - **§1.1 shortened** to one paragraph; Shaw's taxonomy table and the
+    deepen/broaden/innovate-by-track bullets moved to
+    [Appendix B](#appendix-b-contribution-type-mapping-deferred).
+  - **§4 keeps only the research-method rationale** for the parallel-track
+    structure and points to `product-plan.md` §6 for the schedule; the inline
+    Config 1–6 prose was condensed (full menu is `implementation-plan.md` §6,
+    framed by `product-plan.md` §4).
+  - No bandwidth arithmetic (§3), hardware spec (§2), verification-legend
+    definition, decision log (§8), or fallback thesis (§5) moved — those stay
+    authoritative here and are referenced from `product-plan.md`.
+  - The `presentations/` deck was left untouched (out of scope for this
+    restructure; it carries its own stale-framing banner).
 
 ---
 
@@ -644,3 +705,44 @@ week 17, after 13 weeks are already sunk into algorithm tuning against
 idealized in-memory test vectors.
 
 Full reasoning: `../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`.
+
+---
+
+## Appendix B: contribution-type mapping (deferred)
+
+Preserved for when the engineering approach is chosen (M3) — not load-bearing in
+the current draft. §1.1 carries the short version; this is the full
+committee-vocabulary mapping, to be finalised around the selected approach.
+
+**Deepen / broaden / innovate** (common in EU/NL programs):
+
+- The thesis mainly **broadens** — it takes known stereo-correspondence
+  techniques (dense Census/SAD, semi-dense seed-and-grow, bounded sparse
+  key-point matching) and applies them in a genuinely new context: a DSP-less,
+  BRAM-starved, open-toolchain FPGA with a SWIR sensor, for a
+  distance-threshold-alarm objective — and reports what transfers, what is
+  feasible, and what wins.
+- It **deepens** where it measures resource / timing behaviour of those
+  techniques on a device class where that behaviour is undocumented (M2).
+- It does **not** innovate a new matching algorithm, and does not need to — the
+  novelty is carrying real-time stereo onto this platform at all, and the
+  systematic selection of the best approach for the goal.
+
+**Shaw's research-question taxonomy** ("Writing Good Software Engineering
+Research Papers", ICSE 2003), by milestone:
+
+| Milestone | Question type | Question |
+|---|---|---|
+| M1 | Feasibility | Can a non-trivial stereo design be closed and run on a GateMate A1 via the open toolchain at all? |
+| M2 | Feasibility / characterisation | Which cost function × density × resolution/disparity configurations close timing and fit the BRAM budget, and at what resource cost? |
+| M3 | Evaluation / selection | Of the feasible configurations (dense, semi-dense, sparse), which best delivers the real-time near/far threshold alarm, and by how much? |
+| M4 | Feasibility (integration) | Does the selected configuration hold up end-to-end on live SWIR hardware? |
+
+The university's "genuine research contribution, not an implementation exercise"
+requirement is, in these terms, satisfied by the thesis **resting on M2 + M3
+(feasibility + evaluation on an uncharacterised platform)**, with M1 / M4 as
+bring-up and validation. A thesis resting on M1 alone would be a pure
+implementation result — necessary, not sufficient. The fallback thesis (§5) is
+deliberately M2 + M3, so the load-bearing contribution survives losing the
+hardware. State this explicitly to the advisor, in whichever vocabulary the
+committee uses.

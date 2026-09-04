@@ -2,7 +2,27 @@
 
 **Status:** draft synthesis — consolidates everything decided/researched to date
 into one implementation direction. Not yet reviewed by advisor or council.
-**Last updated:** 2026-09-01
+**Last updated:** 2026-09-03
+
+> **2026-09-03 — goal re-centred (founder direction).** The product goal is
+> **real-time, high-fps detection of whether the camera is close to an object**
+> (proximity / near-object detection), **not** a dense depth map — a sparse or
+> low-density output is acceptable and, given the bandwidth budget, preferable.
+> This changes the shortlist: the **density axis (dense → semi-dense → sparse)**
+> is now first-class, and **semi-dense seed-and-grow** and a **bounded sparse
+> key-point** pipeline join Census/SAD as *built and benchmarked* configs, not
+> synthesis-only rows. See `thesis-proposal.md` §1 and its decision log for the
+> full reframe. The dense-matching detail below is still accurate for the dense
+> configs; read "the trade-off surface the research question asks about" as "the
+> feasibility + approach-selection question §1 now asks."
+>
+> **Where this sits (2026-09-03).** [`product-plan.md`](./product-plan.md) is now
+> the primary driver: it owns the product goal, the near/far threshold-alarm
+> output spec, the open engineering-approach search and how a winner is chosen.
+> **This document is the RTL menu that search evaluates** — the candidate
+> configurations in §6, with the constraint→technique reasoning (§5) and the
+> rejections (§7). It does not decide which approach wins; `product-plan.md`
+> §4–§5 does.
 
 ## Purpose & how to read this
 
@@ -179,8 +199,9 @@ more silicon — encouraging, because it means the fps target does not require
 Xilinx/Altera-class resources. (2) The only concrete resource numbers in either
 survey are LUT/BRAM counts on other vendors' fabrics. A GateMate CPE is not a LUT
 (it bundles LUT + adder + 2×2 multiplier + 2 FFs), so **none of these numbers
-transfer** — which is exactly why the thesis treats synthesis-backed
-characterisation (Track B) as the experiment, not a preliminary.
+transfer** — which is exactly why the thesis needs its own synthesis-backed
+feasibility numbers (Track B) before any approach can be ranked (Track C), not
+just a lit-review estimate.
 
 ---
 
@@ -267,11 +288,19 @@ Each hardware fact drives a specific algorithmic consequence:
   (H+V)** over 8-path, which removes the width-scaling diagonal buffers.
 - **PSRAM cannot stage frames + forced streaming →** the whole
   camera→match→output datapath must fit on-chip; there is no "spill the cost
-  volume to DRAM" escape hatch the literature designs lean on. How a
-  cost-function / aggregation choice behaves under that hard on-chip ceiling is
-  itself part of the trade-off surface the research question asks about. Keep
-  the per-row working set small. (Residual PSRAM traffic — rectification,
-  output, test vectors — is a separate budget; see §2.5.)
+  volume to DRAM" escape hatch the literature designs lean on. How each
+  candidate approach — dense, semi-dense, sparse — behaves under that hard
+  on-chip ceiling is exactly the feasibility + selection question §1 asks, and
+  it favours approaches that emit *less* (sparse/semi-dense) over a full dense
+  map. Keep the per-row working set small. (Residual PSRAM traffic —
+  rectification, output, test vectors — is a separate budget; see §2.5.)
+- **Proximity goal → density is a design variable, not fixed at "dense."**
+  "Is the camera close to an object" needs a reliable near-field match signal,
+  not a per-pixel map. That makes **sparse key-point correspondence** and
+  **semi-dense seed-and-grow** legitimate primary candidates, not fallbacks —
+  and the bounded sparse form (fixed key-point cap, deterministic verification,
+  no RANSAC/triangulation) sidesteps the CPU-bound irregular tail that a full
+  sparse-SLAM front end needs.
 - **No hardened CPU →** the control plane is small fabric FSMs or a RISC-V soft
   core. Working GateMate soft-core ports (FemtoRV, NEORV32, LiteX VexRiscv/Serv)
   exist and double as a low-risk Track A Gate A bring-up vehicle.
@@ -304,9 +333,12 @@ Each hardware fact drives a specific algorithmic consequence:
 
 ### 6.2 The configurations
 
-Each is a point on the (cost function × aggregation strategy × resolution/
-disparity) surface from the research question. They are ordered by ascending
-build risk.
+Each is a point on the **density axis** (dense → semi-dense → sparse) crossed
+with a cost function and a resolution/disparity setting — the candidate menu the
+[`product-plan.md`](./product-plan.md) approach search (its §4) evaluates and
+that its §5 criteria rank. All are **built and benchmarked** for the
+threshold-alarm goal; none is privileged as "the" answer up front. Ordered by
+ascending build risk.
 
 **Config 1 — Census + fixed-window block matching, streaming. *(primary, lowest risk)***
 - *What:* Census transform per pixel, Hamming-distance cost, fixed W×W support
@@ -336,25 +368,61 @@ build risk.
 - *What:* AD-Census fused cost (independently capped AD and Census terms) +
   cross-based variable-support aggregation (four arm-length registers per pixel),
   winner-take-all.
-- *Why on the list:* isolates the **aggregation axis** — same LUT-native cost
-  family as Config 1, plus a per-pixel adaptive window that fixes edge fattening
-  for very little memory (registers, not buffers). Measures the accuracy gain and
-  the CPE/BRAM cost of moving one axis while holding the other fixed — the exact
-  separable-axes experiment the research question is built around.
+- *Why on the list:* tests whether adaptive aggregation is worth its cost for
+  the proximity goal, or whether it can be dropped. Same LUT-native cost family
+  as Config 1, plus a per-pixel adaptive window that fixes edge fattening for
+  very little memory (registers, not buffers). Measures the detection-quality
+  gain and the CPE/BRAM cost of adding aggregation while holding the cost
+  function fixed.
 - *Trade-off point tested:* moderate cost function, adaptive aggregation.
 - *Main risk:* cross-based arm computation adds a data-dependent stage; needs a
   Track B synthesis run to confirm it stays cheap on CPEs.
 
-**Config 4 (optional) — dual-path SGM via dependency-relaxation. *(only if Track B shows headroom)***
+**Config 4 — semi-dense seed-and-grow / ELAS-style, streaming. *(density-axis middle)***
+- *What:* Census/Hamming confident "support points" along the epipolar row →
+  guided disparity fill to neighbours along image gradients, the growth bounded
+  entirely on fabric (fixed fan-out, fixed pass count — no ARM core).
+- *Why on the list:* the honest middle of the density axis under SWIR texture
+  starvation — reintroduces a smoothness prior at a fraction of dense cost, and
+  emits far less than a full map. A genuine contribution: every surveyed
+  seed-and-grow system used an ARM core to do the growing.
+- *Trade-off point tested:* confident-seed cost, cheap propagation, semi-dense
+  output — enough surface coverage to answer "is something close" robustly.
+- *Main risk:* bounding the growth on fabric without the data-dependent tail;
+  needs a Track B run to confirm the fan-out logic stays cheap.
+
+**Config 5 — bounded sparse key-point correspondence, streaming. *(density-axis endpoint, goal-aligned)***
+- *What:* single-scale FAST/Harris detector → binary descriptor (BRIEF) or
+  reused Census word → 1-D along-row Hamming search. **Bounded**: hard
+  key-point cap, spatial buckets, top-K by response, so all buffers and cycle
+  counts are static. Verification = left-right consistency + ordering +
+  fixed epipolar-row-offset threshold (from calibration) + parabola sub-pixel.
+  **No RANSAC, no triangulation, no variable-length scatter/gather** — the
+  proximity goal ("is there a close object") needs a bounded set of near
+  matches, not a point cloud, so the CPU-bound irregular tail every surveyed
+  sparse FPGA system offloads is simply not built.
+- *Why on the list:* directly aligned with the goal, lowest output bandwidth,
+  and it frees the aggregation stage + dense-map write traffic — spend the
+  freed CPE/BRAM on wider disparity search or more spatial tiles. The Census
+  datapath from Config 1 is reused almost unchanged as the descriptor + matcher.
+- *Trade-off point tested:* no aggregation, sparse output — the cheapest point
+  on the density axis, and the question is whether SWIR key-point density in
+  the target (fog/glass/low-light) scenes is enough for a reliable "close?"
+  decision.
+- *Main risk:* SWIR texture starvation → too few / too-weak key-points in
+  exactly the scenes the product targets. Config 4 is the hedge if so.
+
+**Config 6 (optional) — dual-path SGM via dependency-relaxation. *(only if Track B shows headroom)***
 - *What:* horizontal + vertical path aggregation only, recursion reading the
   predecessor n pixels back (n = 4 or 8) to break the serial chain, datapath
   replicated across n PUs.
 - *Why maybe:* tests the aggregation axis at its expensive end without a wide
   comparator tree. Dependency-relaxation is the SGM parallelism lever that suits
   a device with no comparator-friendly hard primitive.
-- *Why optional:* only worth the build effort if Config 1–3 leave CPE/BRAM
-  headroom and the accuracy bar demands stronger smoothing. Carries a real,
-  quantified accuracy cost (+0.12 disp error, +1.96 % bad-pixel per PU).
+- *Why optional:* only worth the build effort if Config 1–5 leave CPE/BRAM
+  headroom and the detection-reliability bar demands stronger smoothing.
+  Carries a real, quantified accuracy cost (+0.12 disp error, +1.96 % bad-pixel
+  per PU).
 
 ### 6.3 What to build first (Track A, Gate A)
 
@@ -381,8 +449,13 @@ Each traces to a constraint in §5:
   larger. Not a tuning problem; structurally out.
 - **8-direction SGM** — the four diagonal paths need buffers that scale with
   image width, out of a 160 KB pool, and add serial recursion chains on an
-  unproven-timing toolchain. Dual-path (Config 4) is the only SGM form
+  unproven-timing toolchain. Dual-path (Config 6) is the only SGM form
   considered, and only optionally.
+- **Full sparse-SLAM front end** (unbounded key-point list, brute-force /
+  approximate NN over descriptor sets, RANSAC essential-matrix fit, Delaunay
+  triangulation) — the data-dependent irregular tail every surveyed FPGA design
+  offloads to a hardened CPU the A1 lacks. Config 5 keeps the *bounded* sparse
+  matcher and drops this tail; the proximity goal does not need it.
 - **Comparator-tree min-search as the primary SGM speed-up** — a wide balanced
   combinational reduction over D≈64–128 disparities is a lot of chained CPE logic
   and the structure most likely to miss timing on a young PnR. Dependency-
@@ -397,13 +470,17 @@ Each traces to a constraint in §5:
 
 ## 8. Open dependencies that gate this plan
 
-These must resolve before the shortlist can be finalised or ranked. The
-authoritative list with owners and dates is `thesis-proposal.md` §7 — not
-duplicated here, only the ones that bear directly on §6:
+These must resolve before the menu can be narrowed or ranked. The authoritative
+open-items list with owners and dates is `thesis-proposal.md` §7; the selection
+criteria and their weighting are [`product-plan.md`](./product-plan.md) §5. Only
+the items bearing directly on §6:
 
-- **Accuracy / disparity-quality bar is undefined.** Track C cannot rank Config
-  1–4 against each other without a depth-quality metric (e.g. bad-pixel-% versus
-  KITTI/Middlebury ground truth at a stated threshold) to weigh against fps.
+- **Proximity-detection quality bar is undefined.** M3 cannot rank Config 1–6
+  against each other without the detection metrics and weighting in
+  `product-plan.md` §5 (detection reliability at the band edge, false-negative
+  rate for close objects, false-positive rate, latency, min valid-match
+  density). It is **not** dense bad-pixel-% versus KITTI/Middlebury. See
+  `thesis-proposal.md` §7 for the research-side kill-criterion requirement.
 - **SWIR camera LVDS interface vs. GateMate DDR-GPIO / SerDes fit is unchecked.**
   Gates the Config choice only indirectly, but gates Track A Gate B directly.
 - **Rectification buffer is unsized.** Whether epipolar rectification fits in
