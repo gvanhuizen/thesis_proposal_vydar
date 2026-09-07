@@ -3,33 +3,38 @@
 **Status:** draft — not yet submitted to advisor. Combined-scope framing and
 the detailed FPGA-track plan merged into this one file on 2026-09-03 (see
 decision log); FPGA-track structure was restructured per council review on
-2026-08-05; research question re-centred on the real product goal on 2026-09-03,
-then the product was made the organising goal and this document demoted to the
-academic artefact behind [`product-plan.md`](./product-plan.md) later the same
-day (see decision log). **The research question (§1) and the title above are
-provisional** pending the approach selection driven by `product-plan.md`.
-**Last updated:** 2026-09-03
-**Clock:** 30 weeks, shared with startup product development
+2026-08-05; research question re-centred on the close-range-detection goal on
+2026-09-03, then [`product-plan.md`](./product-plan.md) was set as the driver
+and this document as the academic artefact behind it later the same day;
+framing revised 2026-09-07 to match the proposal-defense deck
+(`../presentations/proposal-defense/deck.md`) — see decision log. **The research
+question (§1) and the title above are provisional** pending the approach
+selection driven by `product-plan.md`.
+**Last updated:** 2026-09-07
+**Clock:** 30 weeks, shared with development of the same work as a product
 
-**Product goal (drives this proposal):** a high-speed **near/far
-distance-threshold alarm** on the GateMate A1 + passive SWIR stereo head — a
-boolean or zoned signal when an object enters a configurable distance band,
-**not** a distance measurement and **not** a dense depth map. The output spec,
-latency budget and the safety-critical false-negative metric live in
-[`product-plan.md`](./product-plan.md) §2. The research framing below is applied
-to whichever engineering approach `product-plan.md`'s search (its §4–§5)
-selects.
+**Goal (drives this proposal):** **real-time close-range detection** on the
+GateMate A1 + passive SWIR stereo head — decide, at the ~600 fps sensor rate,
+whether an object has come within a configurable distance band. The *minimum*
+output is a boolean or zoned flag; the output **granularity** — dense disparity
+map, sparse/semi-dense, or a bare flag — is an outcome of the approach search,
+not fixed. The output spec, the granularity question, the latency budget, the
+safety-critical false-negative metric and the moving-platform / ~600 m/s /
+purely-passive application constraints live in
+[`product-plan.md`](./product-plan.md) §2–§3. The research framing below is
+finalised around whichever engineering approach `product-plan.md`'s search (its
+§4–§5) selects.
 
 This is the **academic artefact** of the project. The primary driver — the
-product goal, the threshold-alarm output spec, the open engineering-approach
-search and how its winner is chosen, and the 30-week milestone / gate / kill
-schedule — is [`product-plan.md`](./product-plan.md) in this folder. This
-document wraps that work in the research framing the advisor and committee see,
-cross-linked to `product-plan.md` and finalised once the approach search
-(Track C / M3) lands. It stays authoritative for the decided hardware / sensor
-spec (§2), the bandwidth arithmetic with the verification legend (§3), the
-research-method rationale for the track structure (§4), the fallback thesis
-(§5), the open-items list (§7), and the chronological decision log (§8).
+goal, the output specification, the open engineering-approach search and how its
+winner is chosen, and the 30-week milestone / gate / kill schedule — is
+[`product-plan.md`](./product-plan.md) in this folder. This document wraps that
+work in the research framing the advisor and committee see, cross-linked to
+`product-plan.md` and finalised once the approach search (Track C / M3) lands.
+It stays authoritative for the decided hardware / sensor spec (§2), the
+bandwidth arithmetic with the verification legend (§3), the research-method
+rationale for the track structure (§4), the fallback thesis (§5), the
+open-items list (§7), and the chronological decision log (§8).
 
 The thesis is built from two implementations tracked as separate git repos on
 disk, siblings of this folder:
@@ -99,17 +104,23 @@ candidate approaches in `product-plan.md` §4; the statement below is the curren
 best formulation, not a commitment.
 
 > On a DSP-less, open-toolchain FPGA (Cologne Chip GateMate A1) fed by a SWIR
-> sensor, which stereo-correspondence approach — **dense, semi-dense, or
-> sparse** — best delivers real-time, high-frame-rate **close-range detection**
-> (is the camera near an object, and roughly how near), under the
-> streaming/line-buffer constraint the platform's memory forces?
+> sensor, which stereo-correspondence approach — a **dense disparity map**, a
+> **bounded sparse key-point** matcher, or a **direct band-limited plane-sweep /
+> disparity-threshold trigger** — best delivers real-time, high-frame-rate
+> **close-range detection** (has an object come within a configurable distance
+> band), under the streaming/line-buffer constraint the platform's memory
+> forces — and how far can the output be reduced (dense map → semi-dense →
+> sparse → bare flag) before detection reliability breaks?
+
+The three approaches are the peer **routes** of `product-plan.md` §4.1; output
+granularity is part of what the question decides, not a fixed premise.
 
 Supporting sub-questions:
 
 - What is *feasible* at all on this device class — which cost function ×
   density × resolution/disparity-range configurations close timing and fit the
   ~160 KB BRAM budget on the young `nextpnr-himbaechel` flow (Track A/B)?
-- Of the feasible ones, which best meets the proximity-detection objective on
+- Of the feasible ones, which best meets the close-range-detection objective on
   frame rate, detection reliability, and resource cost (Track C)?
 - Does the winning configuration hold up end-to-end on live SWIR hardware
   (Track D)?
@@ -136,10 +147,10 @@ submission.
 ### 1.1 Type of contribution
 
 The thesis **broadens** — it carries known stereo-correspondence techniques
-(dense Census/SAD, semi-dense seed-and-grow, bounded sparse key-point matching)
-onto a DSP-less, BRAM-starved, open-toolchain FPGA with a SWIR sensor, for a
-distance-threshold-alarm objective, and reports what transfers, what is
-feasible, and what wins. It **deepens** where it measures resource / timing
+(dense Census/SAD, semi-dense seed-and-grow, bounded sparse key-point matching,
+and a band-limited plane-sweep / disparity-threshold trigger) onto a DSP-less,
+BRAM-starved, open-toolchain FPGA with a SWIR sensor, for a close-range-detection
+objective, and reports what transfers, what is feasible, and what wins. It **deepens** where it measures resource / timing
 behaviour undocumented for this device class (M2). It does **not** innovate a
 new matching algorithm and does not need to — the novelty is carrying real-time
 stereo onto this platform at all, and the systematic selection of the best
@@ -170,6 +181,21 @@ chosen — see [Appendix B](#appendix-b-contribution-type-mapping-deferred) and
 
 Full technical detail and rationale: see the "Target hardware" and "Founder
 context" sections of the FPGA repo's top-level `../stereo_camera_fpga/CLAUDE.md`.
+
+### 2.1 Application scope (folded in 2026-09-04, decision-logged 2026-09-07)
+
+The sensor rides a **moving platform** (pushbroom-stereo regime, Barry &
+Tedrake), not a fixed mount — so no static background-disparity model can be
+calibrated and online background learning on the FPGA is rejected. Closing
+speeds reach **~600 m/s**: at 600 fps that is ~1 m of travel per frame, an
+object is in a 6→3 m watch band for only ~3 frames, and 3 m → contact is ~5 ms,
+which kills long-window temporal filtering. The system is **purely passive** (no
+active illumination, no sensor fusion), and *anything* coming near — terrain
+included — is a valid trigger. A textureless close object with no textured rim
+in view is an irreducible residual that falls to an **UNKNOWN** state, not to
+detection. These constraints are authoritative in
+[`product-plan.md`](./product-plan.md) §3.1 / §2.7 and derived in
+`../stereo_camera_fpga/design/CLAUDE.md` §1, §4.
 
 ## 3. Bandwidth arithmetic (first pass done 2026-08-06; PSRAM part ID confirmed 2026-08-06)
 
@@ -301,12 +327,14 @@ into two independently-gated parallel tracks plus two sequential ones, mapped in
   engineering," not a defensible research artefact.
 - **M3 / Track C — implement & benchmark the feasible set.** Runs against stored
   test vectors, so it does not depend on M1 succeeding. This is the selection
-  experiment: M2 narrows the `product-plan.md` §4 candidate menu to the feasible
-  configurations; M3 builds and benchmarks the survivors on equal footing
-  against the `product-plan.md` §5 criteria, and the approach is chosen here.
-  This supersedes the 2026-09-03 council's "dense is the thesis spine; sparse is
-  a synthesis-only row, off-thesis" verdict (see §8) — that verdict rested on
-  the product wanting a dense depth map, which it does not.
+  experiment: M2 narrows the `product-plan.md` §4 candidate menu — the three
+  peer routes (dense disparity map / bounded sparse key-point / band-limited
+  plane-sweep trigger) and their RTL configs — to the feasible configurations;
+  M3 builds and benchmarks the survivors on equal footing against the
+  `product-plan.md` §5 criteria, and the approach **and its output granularity**
+  are chosen here. This supersedes the 2026-09-03 council's "dense is the thesis
+  spine; sparse is a synthesis-only row, off-thesis" verdict (see §8) — that
+  verdict rested on the goal wanting a dense depth map, which it does not.
 - **M4 / Track D — live integration.** Depends on M1 Gate B and the M3 winner.
   A stretch goal, not load-bearing — per the fallback in §5.
 
@@ -349,9 +377,9 @@ skip the load-bearing bring-up risk:
   wide pipeline racing the clock. Unpublished in either literature survey
   — DSP-rich chips never needed this.
 - **"First open-toolchain stereo bitstream" as a secondary win condition:**
-  citable in the FOSS-EDA community independent of fps outcome, and doubles
-  as startup narrative ("depth on a fully-open board" vs. a $3k Xilinx eval
-  kit). Worth naming explicitly in the write-up regardless of fps result.
+  citable in the open-EDA community independent of fps outcome — real-time stereo
+  on a fully open board and ~$100 of hardware. Worth naming explicitly in the
+  write-up regardless of fps result.
 
 ## 7. Open items (not yet resolved)
 
@@ -401,6 +429,26 @@ addressed by any advisor round.
       disparity, since only the near-field distance-to-object needs to be
       known, (c) synthetic SWIR. Pick one and record the caveat before Track C
       benchmarking.
+- [ ] **Detection range vs. sensing geometry.** A ~12 cm baseline at 600 fps
+      gives usable stereo disparity only in the last few metres and ~2–4 frames
+      of warning. Whether the stated standoff is reachable at all — a wider
+      baseline (a very different mechanical build), a longer focal length, a
+      higher windowed-ROI frame rate, or stereo as a last-metres confirm behind
+      a monocular looming detector — bounds what any matching route can do, and
+      is a legitimate kill finding diagnosable from geometry before M3
+      (`product-plan.md` §6 kill findings, `../stereo_camera_fpga/design/CLAUDE.md` §4).
+- [ ] **IMU / ego-motion estimation on the platform?** Decides whether Route C's
+      two-frame approach-confirm is a motion-compensated predictor (Barry &
+      Tedrake) or a plain N-of-M + monotonic-Δd test
+      (`../stereo_camera_fpga/design/CLAUDE.md` §7).
+- [ ] **UNKNOWN / blind-state output.** `product-plan.md` §2 currently specifies
+      no valid/blind companion flag and no large-blind-region conservative
+      policy for the textureless-object residual (§2.1 here). Specify both before
+      the output form is frozen.
+- [ ] **Alarm-consumer reaction time.** At ~600 m/s the loop only closes if the
+      downstream effector acts in single-digit ms; otherwise detection must move
+      farther out regardless of sensor quality. Needs a figure from the use case
+      (`product-plan.md` §2.4, §2.9).
 - [ ] **Thesis disclosure vs. startup IP.** A public master's thesis (RTL,
       methodology, results) sits next to a startup's proprietary core,
       sharpened by the SWIR sensor decision shifting product framing toward
@@ -466,7 +514,7 @@ addressed by any advisor round.
       the sustained multiplies/s the fabric delivers at pixel rate, are
       themselves Track B characterisation results. The Pi rig's own calibration
       numbers are moot — it is throwaway test scaffolding. Full detail:
-      `../TODO.md` item 4.
+      `../TODO.md` item 3.
 - [ ] **SWIR camera LVDS interface vs. GateMate LVDS-GPIO/SerDes fit** —
       the QDI sensor's LVDS lane count and per-lane bit rate haven't been
       checked against GateMate's DDR-GPIO LVDS timing (no max LVDS toggle
@@ -669,6 +717,37 @@ addressed by any advisor round.
     authoritative here and are referenced from `product-plan.md`.
   - The `presentations/` deck was left untouched (out of scope for this
     restructure; it carries its own stale-framing banner).
+- **2026-09-07:** Framing revised to match the proposal-defense deck
+  (`../presentations/proposal-defense/deck.md`), which had been built out as a
+  staged back-and-forth and now carries the current consensus framing. The deck
+  is the source; the planning docs were brought into line with it. Changes:
+  - **Output granularity re-opened.** The goal leads as *close-range detection
+    within a configurable band*; the output *form* — dense map / sparse /
+    semi-dense / bare boolean-or-zoned flag — is an outcome of the approach
+    search, not a premise. The 2026-09-03 "not a dense depth map" exclusion is
+    dropped: a dense map is one route (Route A). The boolean/zoned spec stays as
+    the *minimum* output; the §2.5 (`product-plan.md`) reliability bar binds
+    every route. §1 research question and §1.1 updated accordingly.
+  - **Three peer routes.** `product-plan.md` §4 and `implementation-plan.md` §6
+    are reorganised around Route A (dense disparity map), Route B (bounded sparse
+    key-point), Route C (band-limited plane-sweep / disparity-threshold trigger),
+    presented without a ranking. `implementation-plan.md` gains **Config 7** for
+    Route C, folded in from `../stereo_camera_fpga/design/CLAUDE.md` (Stages 0–4,
+    `ESTIMATED` budget).
+  - **Application scope folded in** (new §2.1 here; `product-plan.md` §3.1 /
+    §2.7): moving platform / no static background model / no online background
+    learning, closing speed up to ~600 m/s (kills long-window temporal
+    filtering), anything-near-is-valid, purely passive, textureless-object
+    **UNKNOWN state**. Corresponding §7 open items added (detection range vs.
+    geometry, IMU availability, UNKNOWN-state output, alarm-consumer reaction
+    time). This closes the "not yet folded into the planning docs" flag in
+    `../stereo_camera_fpga/design/CLAUDE.md` §1 / §7.
+  - **Startup / commercial framing de-emphasised** across `product-plan.md` — it
+    now reads as the engineering plan for a research project with a concrete
+    application goal. §2–§3 arithmetic, the verification legend, the fallback
+    thesis (§5) and this log are unchanged.
+  - The council transcripts and the earlier decision-log entries above are
+    point-in-time records and were left unedited.
 
 ---
 
@@ -718,9 +797,10 @@ committee-vocabulary mapping, to be finalised around the selected approach.
 
 - The thesis mainly **broadens** — it takes known stereo-correspondence
   techniques (dense Census/SAD, semi-dense seed-and-grow, bounded sparse
-  key-point matching) and applies them in a genuinely new context: a DSP-less,
+  key-point matching, and a band-limited plane-sweep / disparity-threshold
+  trigger) and applies them in a genuinely new context: a DSP-less,
   BRAM-starved, open-toolchain FPGA with a SWIR sensor, for a
-  distance-threshold-alarm objective — and reports what transfers, what is
+  close-range-detection objective — and reports what transfers, what is
   feasible, and what wins.
 - It **deepens** where it measures resource / timing behaviour of those
   techniques on a device class where that behaviour is undocumented (M2).
@@ -735,7 +815,7 @@ Research Papers", ICSE 2003), by milestone:
 |---|---|---|
 | M1 | Feasibility | Can a non-trivial stereo design be closed and run on a GateMate A1 via the open toolchain at all? |
 | M2 | Feasibility / characterisation | Which cost function × density × resolution/disparity configurations close timing and fit the BRAM budget, and at what resource cost? |
-| M3 | Evaluation / selection | Of the feasible configurations (dense, semi-dense, sparse), which best delivers the real-time near/far threshold alarm, and by how much? |
+| M3 | Evaluation / selection | Of the feasible configurations across the three routes (dense disparity map, bounded sparse key-point, band-limited plane-sweep trigger), which best delivers real-time close-range detection — and at what output granularity, and by how much? |
 | M4 | Feasibility (integration) | Does the selected configuration hold up end-to-end on live SWIR hardware? |
 
 The university's "genuine research contribution, not an implementation exercise"

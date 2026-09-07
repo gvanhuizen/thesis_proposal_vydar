@@ -2,11 +2,11 @@
 
 **Status:** draft synthesis — consolidates everything decided/researched to date
 into one implementation direction. Not yet reviewed by advisor or council.
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-07
 
-> **2026-09-03 — goal re-centred (founder direction).** The product goal is
+> **2026-09-03 — goal re-centred (founder direction).** The goal is
 > **real-time, high-fps detection of whether the camera is close to an object**
-> (proximity / near-object detection), **not** a dense depth map — a sparse or
+> (close-range / near-object detection), **not** a dense depth map — a sparse or
 > low-density output is acceptable and, given the bandwidth budget, preferable.
 > This changes the shortlist: the **density axis (dense → semi-dense → sparse)**
 > is now first-class, and **semi-dense seed-and-grow** and a **bounded sparse
@@ -16,13 +16,23 @@ into one implementation direction. Not yet reviewed by advisor or council.
 > configs; read "the trade-off surface the research question asks about" as "the
 > feasibility + approach-selection question §1 now asks."
 >
-> **Where this sits (2026-09-03).** [`product-plan.md`](./product-plan.md) is now
-> the primary driver: it owns the product goal, the near/far threshold-alarm
-> output spec, the open engineering-approach search and how a winner is chosen.
-> **This document is the RTL menu that search evaluates** — the candidate
-> configurations in §6, with the constraint→technique reasoning (§5) and the
-> rejections (§7). It does not decide which approach wins; `product-plan.md`
-> §4–§5 does.
+> **2026-09-07 — organised into three peer routes; Config 7 added.** Matching the
+> proposal-defense deck (`../presentations/proposal-defense/deck.md`), the menu
+> below is now grouped into three **peer routes, not a ranking**: **Route A** a
+> dense disparity map (Configs 1–4, 6), **Route B** a bounded sparse key-point
+> matcher (Config 5), **Route C** a direct band-limited plane-sweep /
+> disparity-threshold trigger (**Config 7**, new — §6.2, folded in from
+> `../stereo_camera_fpga/design/CLAUDE.md`). The output *granularity* each route
+> commits to is itself an M3 selection outcome (`product-plan.md` §5.3). The
+> **moving-platform / ~600 m/s / purely-passive** application constraints are now
+> in `product-plan.md` §3.1 and inform §5 / Config 7 below.
+>
+> **Where this sits.** [`product-plan.md`](./product-plan.md) is the primary
+> driver: it owns the goal, the output spec and the open granularity question,
+> the engineering-approach search and how a winner is chosen. **This document is
+> the RTL menu that search evaluates** — the candidate configurations in §6, with
+> the constraint→technique reasoning (§5) and the rejections (§7). It does not
+> decide which approach wins; `product-plan.md` §4–§5 does.
 
 ## Purpose & how to read this
 
@@ -294,13 +304,25 @@ Each hardware fact drives a specific algorithmic consequence:
   it favours approaches that emit *less* (sparse/semi-dense) over a full dense
   map. Keep the per-row working set small. (Residual PSRAM traffic —
   rectification, output, test vectors — is a separate budget; see §2.5.)
-- **Proximity goal → density is a design variable, not fixed at "dense."**
+- **Close-range goal → density is a design variable, not fixed at "dense."**
   "Is the camera close to an object" needs a reliable near-field match signal,
   not a per-pixel map. That makes **sparse key-point correspondence** and
   **semi-dense seed-and-grow** legitimate primary candidates, not fallbacks —
   and the bounded sparse form (fixed key-point cap, deterministic verification,
   no RANSAC/triangulation) sidesteps the CPU-bound irregular tail that a full
-  sparse-SLAM front end needs.
+  sparse-SLAM front end needs. It also makes a **direct band-limited plane-sweep**
+  (Config 7 / Route C) viable: evaluate the Hamming cost only at the `K` planes
+  of the watch band, gate + reduce + confirm, emit a boolean/zoned readout —
+  never build a cost volume or a map.
+- **Moving platform + no static background model → the false-positive defence
+  must come from the current frame(s), not a calibrated background.** `d_bg`
+  cannot be learned (the platform moves), and online background learning on the
+  FPGA is rejected (`product-plan.md` §3.1). So a fixed disparity threshold is
+  not by itself "closer than D": Config 7 leans on a **per-frame far-prior**
+  (Delaunay-free ELAS envelope from this frame's own confident pixels), **spatial
+  coherence** (U/V-disparity runs), and a **two-frame Δd** approach test — all
+  frame-local, all cheap. The ~600 m/s regime collapses any long-window temporal
+  filter to that 2-of-3 / fast-path Δd form.
 - **No hardened CPU →** the control plane is small fabric FSMs or a RISC-V soft
   core. Working GateMate soft-core ports (FemtoRV, NEORV32, LiteX VexRiscv/Serv)
   exist and double as a low-risk Track A Gate A bring-up vehicle.
@@ -337,8 +359,20 @@ Each is a point on the **density axis** (dense → semi-dense → sparse) crosse
 with a cost function and a resolution/disparity setting — the candidate menu the
 [`product-plan.md`](./product-plan.md) approach search (its §4) evaluates and
 that its §5 criteria rank. All are **built and benchmarked** for the
-threshold-alarm goal; none is privileged as "the" answer up front. Ordered by
-ascending build risk.
+close-range-detection goal; none is privileged as "the" answer up front. Ordered
+by ascending build risk.
+
+**Grouped into the three peer routes** of `product-plan.md` §4.1:
+
+| Route | What it commits to | Configs |
+|---|---|---|
+| **A — dense disparity map** | one disparity per pixel (optionally reduced to semi-dense); for a band decision, run the dense datapath as a single/few-plane occupancy test | 1, 2, 3, 4, (6) |
+| **B — bounded sparse key-point** | a short, capped list of matched near points; no map | 5 |
+| **C — direct range-threshold plane-sweep** | a boolean/zoned occupancy readout; never `argmin`, never a map | **7** |
+
+Routes are peers. The work started aimed at Route A; the close-range goal relaxes
+the expensive parts (`product-plan.md` §2.8), so how far the output can be
+reduced is part of what M2/M3 decides.
 
 **Config 1 — Census + fixed-window block matching, streaming. *(primary, lowest risk)***
 - *What:* Census transform per pixel, Hamming-distance cost, fixed W×W support
@@ -410,7 +444,7 @@ ascending build risk.
   the target (fog/glass/low-light) scenes is enough for a reliable "close?"
   decision.
 - *Main risk:* SWIR texture starvation → too few / too-weak key-points in
-  exactly the scenes the product targets. Config 4 is the hedge if so.
+  exactly the scenes the work targets. Config 4 is the hedge if so.
 - *Related use — keypoint as a pre-gate, not a standalone matcher:* the same
   detector can gate what enters a dense few-plane trigger chain (only key-point
   pixels run the plane-sweep + FP filters) instead of producing the output
@@ -439,6 +473,80 @@ ascending build risk.
   headroom and the detection-reliability bar demands stronger smoothing.
   Carries a real, quantified accuracy cost (+0.12 disp error, +1.96 % bad-pixel
   per PU).
+
+**Config 7 — band-limited plane-sweep / disparity-threshold trigger, streaming. *(Route C, goal-aligned; timing-closure risk)***
+
+Folded in 2026-09-07 from a 2026-09-04 design session
+(`../stereo_camera_fpga/design/CLAUDE.md`, where the per-stage reasoning and the
+two feeding surveys live). Established terminology: **band-limited plane-sweep
+stereo with a disparity-threshold occupancy readout** — a degenerate plane-sweep
+that tests one or a few disparity hypotheses, decides, and does **not** `argmin`
+and does **not** emit a depth map.
+
+- *What — a streaming, line-buffered pipeline, no frame buffer anywhere*
+  (PSRAM carries only the rectification coefficients):
+  - **Stage 0 — rectification** on the fly from ~a dozen polynomial
+    lens-distortion + rotation-homography coefficients, bilinear-sampled; the
+    vertical-remap window is fused into the Stage 1 line buffer (no per-pixel
+    LUT — it is ~16× BRAM / ~15× PSRAM).
+  - **Stage 1 — banded plane-sweep + per-pixel pre-filter.** Census-transform
+    both images; compute the Hamming cost at the `K ≈ 30–50` planes of the watch
+    band `d_watch..d_max`; emit the winning plane index only for pixels that pass
+    three orthogonal rejects — a **texture / squared-gradient gate** (Konolige
+    SVS), a **curve-shape reject** (3-tap curvature / peak-ratio / second-minimum
+    — the one that catches textureless; LRC alone misses it), and **LRC /
+    uniqueness** (Di Stefano single-pass).
+  - **Stage 1.5 — per-frame far-prior.** A coarse ~40×32-cell disparity envelope
+    from *this* frame's own confident pixels; a near-band pixel is promoted only
+    if the local coarse prior is also near-band, or the match is high-confidence
+    and spatially coherent. Replaces the calibrated background model a moving
+    platform cannot have.
+  - **Stage 2 — spatial reduction** (recommended: U/V-disparity histograms,
+    Oleynikova / Irki): per-pixel stream → ≤ ~16 cluster records
+    `{x̄, ȳ, area, d̄, bbox}` with no connected-component labelling.
+  - **Stage 3 — two-frame Δd confirm.** At 600 fps an object is in-band ~2–4
+    frames, so the long-window approach tracker collapses to a frame-to-frame
+    disparity-jump test: associate to the `t−1` cluster within a position gate,
+    flag `Δd ≥ Δd_min` + area-consistency, 2-of-3 hit counter, plus a
+    single-frame-pair **fast path** for `Δd ≥ Δd_fast`.
+  - **Stage 4 — alarm decision.** Boolean (any confirmed cluster with
+    `d̄ ≥ d_alarm`, `d_alarm` set early to absorb latency) or zoned; hysteresis;
+    GPIO/PMOD/UART readout. Any VGA/debug overlay is strictly downstream and
+    never gates the alarm.
+- *Why on the list:* the most goal-aligned route — smallest on-chip footprint of
+  any candidate, disparity search already collapsed to `K` planes, no cost
+  volume, no dense-map writes. The false-positive machinery (Stages 1.5–4) is
+  ~300 CPE / ~1 BRAM block — nearly free; the cost is all in the Stage 1 matcher
+  and the Stage 0 rectification band, paid by every route.
+- *Trade-off point tested:* no aggregation, no map — the extreme low end of the
+  density axis, with the FP defence moved entirely into frame-local priors +
+  coherence + Δd.
+- *ESTIMATED budget* (napkin arithmetic vs. the A1, **not** place-and-route;
+  pixel rate ≈ 197 Mpix/s):
+
+  | Stage | CPE | BRAM (of 32) | Mult | PSRAM |
+  |---|---|---|---|---|
+  | 0 Rectify | ~450 | ~9–10 (±16-row band) | ~8/pix | coeffs |
+  | 1 Match + pre-filter | ~3,000–3,500 | ~3–4 (or folded into St.0) | 0 | none |
+  | 1.5 Per-frame far-prior | ~150 | ~1–2 | 0 | none |
+  | 2 Spatial reduction (U/V) | ~100 | < 1 | 0 | none |
+  | 3 Two-frame Δd confirm | ~100 | 0 | 0 | none |
+  | 4 Alarm decision | ~50–150 | 0 | 0 | none |
+  | **Total** | **~4,000–4,500 (~20–22 %)** | **~15–18 (~half)** | St. 0 only | none in datapath |
+
+- *Main risk:* the `K`-plane Hamming bank must run **combinational at pixel
+  rate** — this is **the** timing-closure gate on the young `nextpnr-himbaechel`
+  flow. Levers: shrink `K` (narrower watch band) or time-multiplex the Hamming
+  units. Secondary: the Stage 0 ±16-row rectification band (~9–10 BRAM blocks) vs.
+  everything else — needs a signed mechanical misalignment spec (`../TODO.md`
+  item 3). Residual: a textureless close object with no textured rim → UNKNOWN
+  state, not detection (`product-plan.md` §2.7).
+- *Relationship to the other routes:* Config 7 is the detailed form of the "dense
+  few-plane occupancy test" noted for Route A; a **key-point pre-gate** (Config 5
+  detector gating which pixels enter the Stage 1 sweep) is a studied variant —
+  viable as an additive fast-path channel, not as the sole front end on
+  false-negative grounds (`../stereo_camera_fpga/design/CLAUDE.md`, variant
+  section).
 
 ### 6.3 What to build first (Track A, Gate A)
 
@@ -471,7 +579,12 @@ Each traces to a constraint in §5:
   approximate NN over descriptor sets, RANSAC essential-matrix fit, Delaunay
   triangulation) — the data-dependent irregular tail every surveyed FPGA design
   offloads to a hardened CPU the A1 lacks. Config 5 keeps the *bounded* sparse
-  matcher and drops this tail; the proximity goal does not need it.
+  matcher and drops this tail; the close-range goal does not need it.
+- **Static background-disparity model / online background learning** (for
+  false-positive suppression) — the platform moves, so `d_bg` cannot be
+  calibrated, and an on-FPGA learner is stateful, memory-hungry, and can learn
+  away a real intruder (`product-plan.md` §3.1). Config 7's FP defence is
+  frame-local instead (per-frame far-prior + spatial coherence + two-frame Δd).
 - **Comparator-tree min-search as the primary SGM speed-up** — a wide balanced
   combinational reduction over D≈64–128 disparities is a lot of chained CPE logic
   and the structure most likely to miss timing on a young PnR. Dependency-
@@ -491,12 +604,22 @@ open-items list with owners and dates is `thesis-proposal.md` §7; the selection
 criteria and their weighting are [`product-plan.md`](./product-plan.md) §5. Only
 the items bearing directly on §6:
 
-- **Proximity-detection quality bar is undefined.** M3 cannot rank Config 1–6
+- **Close-range-detection quality bar is undefined.** M3 cannot rank Config 1–7
   against each other without the detection metrics and weighting in
   `product-plan.md` §5 (detection reliability at the band edge, false-negative
   rate for close objects, false-positive rate, latency, min valid-match
-  density). It is **not** dense bad-pixel-% versus KITTI/Middlebury. See
-  `thesis-proposal.md` §7 for the research-side kill-criterion requirement.
+  density, output granularity delivered). It is **not** dense bad-pixel-% versus
+  KITTI/Middlebury. See `thesis-proposal.md` §7 for the research-side
+  kill-criterion requirement.
+- **Detection range vs. sensing geometry.** A ~12 cm baseline at 600 fps yields
+  usable disparity only in the last few metres and ~2–4 frames of warning; if the
+  required standoff needs a wider baseline / longer focal length / higher
+  windowed-ROI frame rate, that is a geometry constraint bounding *every* config,
+  diagnosable before M3 (`product-plan.md` §6 kill findings,
+  `../stereo_camera_fpga/design/CLAUDE.md` §4).
+- **IMU / ego-motion estimation on the platform?** Sets Config 7 Stage 3 —
+  motion-compensated prediction (Barry & Tedrake) vs. plain N-of-M + monotonic-Δd
+  (`../stereo_camera_fpga/design/CLAUDE.md` §7).
 - **SWIR camera LVDS interface vs. GateMate DDR-GPIO / SerDes fit is unchecked.**
   Gates the Config choice only indirectly, but gates Track A Gate B directly.
 - **Rectification buffer is unsized.** Whether epipolar rectification fits in
@@ -526,9 +649,16 @@ the items bearing directly on §6:
 - `../stereo_camera_fpga/research/summaries/2026-08-05-fpga-stereo-vision-pipelines.md`
 - `../stereo_camera_fpga/research/summaries/2026-08-05-sad-census-stereo-matching.md`
 - `../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`
+- `../stereo_camera_fpga/research/summaries/2026-09-01-swir-stereo-depth-perception.md`
+- `../stereo_camera_fpga/research/summaries/2026-09-04-plane-sweep-disparity-threshold-trigger.md`
+  (Config 7)
+- `../stereo_camera_fpga/research/summaries/2026-09-04-textureless-region-false-positive-suppression.md`
+  (Config 7 pre-filters)
 - `../stereo_camera_fpga/research/synthesis/stereo-vision-techniques-explained.md`
 - `../stereo_camera_fpga/research/synthesis/top-5-papers-to-read.md`
 - `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+- `../stereo_camera_fpga/research/synthesis/dense-vs-keypoint-for-threshold-alarm.md`
+- `../stereo_camera_fpga/design/CLAUDE.md` — Config 7 per-stage design + budget
 - `thesis-proposal.md` (this folder)
 - `../stereo_camera_fpga/council/council-transcript-2026-08-05_1752.md`,
   `../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`,
