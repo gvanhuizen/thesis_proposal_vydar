@@ -421,7 +421,11 @@ ascending build risk.
   follow-on (2–4 frames of warning; a handful of key-points per object starves
   the spatial/temporal FP tests that a dense vote field keeps fed). Not a sole
   front-end on FN grounds; viable as an additive fast-path channel or a
-  low-key-point exception path. Full ups/downs in
+  low-key-point exception path. *Cap-free form:* keep the full raster with a
+  per-pixel valid / annotation bit (no grid buckets, no top-K, no compaction) —
+  removes all list-sequencing, but forgoes the K-plane-bank shrink (no cap ⇒ bank
+  sized for peak ⇒ power saving only, not CPE/fmax), and fits the additive-channel
+  role, not the input-veto one. Full ups/downs in
   `../stereo_camera_fpga/design/CLAUDE.md` (keypoint pre-gate variant).
 
 **Config 6 (optional) — dual-path SGM via dependency-relaxation. *(only if Track B shows headroom)***
