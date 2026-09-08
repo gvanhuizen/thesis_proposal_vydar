@@ -217,3 +217,130 @@ with the founder / stakeholder.
   accordingly.
 - Whatever else the defense raises → capture here first, then route to the right
   doc.
+
+---
+
+## E. "Why GateMate, and not another small / open FPGA?"
+
+Flagged in
+`../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+as unaddressed anywhere and a likely defense question. One-paragraph answer:
+
+> The honest first reason is that the platform was already fixed — the product
+> is built on the Olimex GateMateA1-EVB (a ~€50 open-hardware board). But the
+> board is *why the work is a research question rather than a port*. Two of the
+> A1's properties are exactly the ones the literature has never characterised
+> for real-time stereo: a **fully open synthesis-to-bitstream toolchain**
+> (yosys + nextpnr-himbaechel + gmpack) with **no prior stereo, vision, or
+> camera-ingest design of any kind** and no published f_max for any real
+> design; and a **DSP-less fabric** — the largest hard arithmetic primitive is
+> a 2×2-bit multiplier per cell, no hardened MAC. A Lattice ECP5 would remove
+> both: its open flow (Project Trellis / nextpnr) is mature and well
+> characterised, and its 18×18 DSP blocks make it a conventional target where
+> the surveyed Xilinx/Altera results largely transfer. An iCE40 is too small to
+> attempt real stereo at all. The GateMate A1 sits in the gap — large enough to
+> try, open and DSP-less enough that the achievable feasibility / quality /
+> throughput envelope is genuinely unknown. That gap is the contribution
+> (`thesis-proposal.md` §1 / §1.1). It is also a 28 nm European part with an
+> EU-funded open-tooling effort (Open Cologne) behind it, which makes the
+> "first open-toolchain stereo bitstream" secondary outcome citable.
+
+*Docs:* fold a trimmed version into `thesis-proposal.md` §1 (or a new §1.2
+"device choice") once the framing is confirmed at the debrief.
+
+---
+
+## F. Pre-meeting findings — 2026-09-08 investigation pass
+
+Three direction-independent investigations, written up under
+`../stereo_camera_fpga/research/synthesis/`. Each ends with a verdict and an
+explicit "what this means" line. **Two surfaced kill-finding candidates that the
+committee should weigh in on now, before M2/M3 sink time.**
+
+### F1. Detection range vs. sensing geometry → `geometry-feasibility.md`
+
+Parametric sweep (script `geometry_feasibility.py`), commits to no band /
+baseline / lens; reproduces the worked example in
+`../stereo_camera_fpga/design/CLAUDE.md` §4 exactly as a calibration check.
+
+- The binding limit is the **per-frame disparity change** `Δd`, not absolute
+  disparity. At 600 m/s / 600 fps, an `f_px = 800` rig keeps `Δd ≥ 1 px` only
+  out to ~**7 m** (B = 6 cm) … ~**18 m** (B = 40 cm); sub-pixel refinement
+  doubles that but leans on texture the money scenes remove.
+- **The decision hinges on one number the meeting must produce: the required
+  detection standoff.** If it is **≤ ~10 m**, geometry clears and the C1 latency
+  budget stands. If it is **tens of metres with a compact head**, that is a
+  **kill finding for passive short-baseline stereo as the primary detector** —
+  keeping `Δd ≥ 1 px` at 20 m needs a 50 cm baseline; at 40 m, 2 m ("a very
+  different mechanical product"). Fallback: stereo as a last-≈10 m confirm
+  behind a monocular looming / time-to-contact trigger.
+- Confirms C1's stated hard dependency is real and quantified; **does not move**
+  the proposed C1–C4 numbers.
+- **Also confirm the QDI sensor's pixel pitch** — a 5 µm SenSWIR-class part
+  rescales every baseline figure by ~3× vs. the 15 µm assumed.
+
+### F2. SWIR camera interface ↔ GateMate I/O → `swir-lvds-gatemate-io-fit.md`
+
+- **The A1's SerDes is 2.5 Gb/s, not 5 Gb/s** (CCGM1A1 datasheet DS1001,
+  Feb 2024). Usable ~250 MB/s after 8b/10b — **below a single SWIR stream**
+  (344–401 MB/s). The "one 5 Gb/s SerDes lane carries one camera" statement in
+  `stereo_camera_fpga/CLAUDE.md`, `thesis-proposal.md` §7/§8 and
+  `product-plan.md` §3.2 is wrong on both the rate and the conclusion — correct
+  it. Camera ingest must be **parallel DDR-GPIO LVDS**, whose max per-pair data
+  rate the datasheet does not state (ask Cologne Chip / Olimex).
+- **Blocking unknown:** does the QDI Systems / Allied Vision SWIR camera expose
+  a **hardware trigger / master-slave sync** to line-lock two units? Not in any
+  public source; the ICD is likely NDA. Without it the two sensors free-run,
+  realignment forces a frame buffer → PSRAM staging → **the streaming
+  architecture the thesis rests on collapses**. Get the exact camera model from
+  the founder; request the ICD from QDI / Allied Vision **before M1 Gate B**.
+- Treat "no hardware sync" as a geometry-class **kill-finding candidate** for
+  the meeting agenda.
+
+### F3. GateMate open-toolchain prior art → `gatemate-toolchain-priorart.md`
+
+- Highest clock any real GateMate design is publicly known to run at is
+  **≈ 148.5 MHz** (a 1080p60 HDMI pipeline). NEORV32 reached only **20 MHz**
+  (early board, PLL ripple, `--retime` needed, routing congestion) — caveat-
+  heavy. PLL output ceilings: **250 / 312.5 / 416.75 MHz** (lowpower / economy /
+  speed). nextpnr-himbaechel's GateMate timing model is young and not publicly
+  validated against silicon.
+- **No stereo / vision / camera design exists anywhere in the GateMate
+  ecosystem** — zero reference points.
+- **M2 implication:** target a fabric clock **≤ ~150 MHz**, not the 197 Mpix/s
+  napkin figure; plan multi-pixel-per-clock or time-multiplexed Hamming units
+  from the start. First synthesis run = a bare Census + Hamming block swept for
+  f_max (also serves as the M1 Gate A design). Cross-check the open-flow STA
+  once against the proprietary `p_r` STA.
+- Not a kill finding — a design constraint and a first concrete input to the
+  Track B sweep.
+
+### F3b. Reusable stereo IP → `stereo-ip-cores-for-gatemate.md`
+
+Follow-up search on existing RTL to build on. No stereo core has ever run on
+GateMate, but two vendor-neutral, DSP-free, yosys-friendly matching cores are
+usable as references/starting points: **danstrother `dlsc_stereobm`** (SAD,
+BSD-3, inference-only) and **Guerrero `stereo_vision_core`** (Census + Hamming,
+streaming, already yosys-converted — matches the thesis front end). Neither is
+drop-in. Camera ingest has no IP shortcut (the SWIR LVDS receiver is custom
+either way); one GateMate-native open Verilog video front end exists
+(FHDO-ICLAB, but MIPI-CSI-2 not LVDS). **Licensing matters:** BSD (`dlsc_stereobm`)
+is product-safe, `stereo_vision_core` is LGPL (confirm), `StereoCensus` /
+`FP-Stereo` are GPL-3.0 → sim/measurement only, never product RTL
+(`thesis-proposal.md` §7 disclosure item). Lets M2 use a ready-made Config-1
+reference instead of writing the Census datapath from scratch — not a
+schedule/agenda change, an efficiency.
+
+### F4. Agenda impact
+
+- **B5 (detection-reliability bar)** and **B1 (fallback sign-off)** remain the
+  top two.
+- **Add a third live question:** *given (a) the required detection standoff and
+  (b) whether the camera can hardware-sync two heads, does passive
+  short-baseline SWIR stereo on this hardware survive as the primary
+  architecture at all?* Both are diagnosable now, both are legitimate stops
+  (`product-plan.md` §6 kill findings), and both are cheaper to face before M2/M3
+  than after.
+- **Correction to carry into the docs regardless of the debrief:** SerDes
+  2.5 Gb/s (F2) — fix in `thesis-proposal.md` §3/§7/§8, `product-plan.md` §3.2,
+  `stereo_camera_fpga/CLAUDE.md`.
