@@ -388,6 +388,47 @@ texture starvation (§2.8) is heaviest on the pure-local dense forms of Route A
 and on Route B, and lightest on the semi-dense middle and on Route C's per-frame
 far-prior + coherence stack.
 
+### 4.5 Deferred side option — monocular TTC looming channel (NOT in the search)
+
+**Monocular time-to-contact (TTC) / optical-expansion looming.** Recorded
+2026-09-08 as an optional future **side-experiment** — **not** a route evaluated
+by §4–§5, **not** part of the granularity question, and **not** on the M1–M4
+critical path. Do not integrate it into the main pipeline now.
+
+Kept on the books because it is cheap to bolt on and cheap to falsify: it reuses
+the front end every stereo route already builds (rectify → Census / gradient),
+and a Horn–Fang–Masaki-2007-style *direct* estimator adds only ~10 image-wide
+fixed-point accumulators plus a small solve — no multipliers, minimal BRAM, one
+streaming pass, low timing-closure risk — and it can be characterised entirely
+offline (NumPy + rendered / KITTI forward-motion clips) with no SWIR dataset and
+no hardware contention. It would run concurrently on one already-ingested stream
+and may only ever **OR-in** an alert, never gate a stereo route.
+
+The one larger dependency is **IMU / ego-motion**: without known ego-velocity the
+output is a *time*, not a `[Z_near, Z_far]` decision, and object-vs-background
+separation is done on raw flow structure; with an IMU, `Z ≈ W·τ` converts the
+band directly and the separation becomes residual detection. That step is out of
+scope for a first pass.
+
+llm-council (2026-09-08) verdict: **not viable as a primary trigger or a
+mandatory pre-filter** — the focus-of-expansion degeneracy coincides with the
+head-on threat, the ~3-frame / ~600 m/s regime defeats the temporal averaging
+TTC accuracy needs, and SWIR low texture + motion blur along the expansion axis
+attack the signal. Viable only as an **optional OR-in looming channel**.
+
+**Observability check — done 2026-09-08** (`.../synthesis/time-to-contact-explained.md`
+§7, `f_px = 800` placeholder): **provisional pass-with-caveats, not a kill.** For
+an extended target (`S ≳ 0.1 m`) in a ≤ ~6–9 m band the per-frame image
+expansion is 2–25+ px (not sub-pixel), and for `S > B` it exceeds the stereo
+per-frame disparity-change signal — raw detectability is not the close-range
+blocker. But motion blur ≈ the inter-frame step, so with ~3 frames the τ
+*precision* caps at ~15–35 % (≈ ±0.5–1 m at a 3 m edge) — a coarse OR-in flag,
+not a calibrated band; and `Δs ∝ f_px·S/Z²` sends small (≲ 3 cm) or far
+(≳ 10–15 m) targets sub-pixel. Full notes:
+`../stereo_camera_fpga/research/synthesis/time-to-contact-explained.md` §6–§7,
+`../stereo_camera_fpga/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`,
+`../stereo_camera_fpga/research/summaries/2026-09-08-monocular-depth-perception.md`.
+
 ---
 
 ## 5. Selection method — how the winner is picked
@@ -606,6 +647,21 @@ rolls up the open items.
   - **Startup / commercial framing de-emphasised.** This document reads as the
     engineering plan for a research project with a concrete application goal;
     the 2026-09-03 decision history above is unchanged.
+- **2026-09-08:** Monocular **TTC / optical-expansion looming** recorded as a
+  **deferred side option** (§4.5) — not a route in the §4 search, not on the
+  M1–M4 path. Rationale: it bolts onto the shared front end for near-zero
+  incremental RTL and is testable entirely offline; the only larger extra step
+  is IMU / ego-motion. Reviewed by `/llm-council` the same day: viable only as an
+  optional OR-in channel; disqualified as a primary or mandatory-pre-filter
+  trigger (focus-of-expansion degeneracy on the head-on case, ~3-frame regime,
+  SWIR texture / blur). **Observability check done the same day**
+  (`.../synthesis/time-to-contact-explained.md` §7): provisional
+  pass-with-caveats — per-frame image expansion is supra-pixel for extended
+  targets in the close band (not a kill), but blur ≈ the inter-frame step caps τ
+  precision at ~15–35 %, so it stays a coarse OR-in flag only. Notes:
+  `../stereo_camera_fpga/research/synthesis/time-to-contact-explained.md` §6–§7,
+  `../stereo_camera_fpga/research/summaries/2026-09-08-monocular-depth-perception.md`,
+  `../stereo_camera_fpga/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`.
 
 ### Open items (rolled up)
 
