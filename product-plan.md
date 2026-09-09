@@ -3,29 +3,40 @@
 **Status:** primary driver document — active. Created 2026-09-03 as the driver
 for the whole effort (see `thesis-proposal.md` §8 decision log); framing revised
 2026-09-07 to match the proposal-defense deck
-(`../presentations/proposal-defense/deck.md`) — see §8.
-**Last updated:** 2026-09-07
+(`../presentations/proposal-defense/deck.md`); engineering approach **decided
+2026-09-09** — see §4 and §8.
+**Last updated:** 2026-09-09
 **Clock:** 30 weeks, shared with the master's thesis.
 
 This is the driver document for the whole effort: the engineering objective, the
-fixed hardware envelope, the open approach search, and the 30-week schedule. The
-concrete goal is **real-time close-range detection** — decide, at the sensor
-frame rate, whether an object has come within a configured distance band, on the
-fixed hardware below. The research framing (`thesis-proposal.md`) is developed
-alongside this document and finalised around whichever engineering approach the
-search in §4–§5 selects. The output *granularity* that approach produces — a
-dense disparity map, a sparse/semi-dense output, or a bare boolean/zoned flag —
-is itself part of what the search decides (§2, §4); it is not fixed here.
+fixed hardware envelope, the decided engineering approach, and the 30-week
+schedule. The concrete goal is **real-time close-range detection** — decide, at
+the sensor frame rate, whether an object has come within a configured distance
+band, on the fixed hardware below. The research framing (`thesis-proposal.md`) is
+developed alongside this document and finalised around the decided approach.
+
+**Approach decided 2026-09-09 — a band-limited disparity-range sweep.** The
+system tests the match cost only at the `K` disparity planes of the configured
+watch band, gates / reduces / confirms, and emits a boolean-or-zoned
+range-threshold flag. It does **not** compute a per-pixel disparity map, and it
+does **not** build a sparse key-point set. This is the route §4–§5 evaluated as
+**Route C** (`implementation-plan.md` Config 7 — "band-limited plane-sweep /
+disparity-threshold trigger"). §4 now records it as the decision; the dense-map
+(Route A) and bounded sparse key-point (Route B) alternatives are kept there as
+the considered-and-set-aside options. The output *granularity* is therefore
+settled: a boolean/zoned flag (optionally carrying the surviving plane index),
+not a dense or semi-dense map. Boolean-vs-zoned for v1 remains an open sub-choice
+(§2.9).
 
 ---
 
 ## 0. What this document is, and how the docs relate
 
 - **`product-plan.md`** (this file) — the driver and entry point. Owns: the
-  engineering goal (§1), the output specification and the open granularity
-  question (§2), the fixed-hardware envelope and the application constraints in
-  brief (§3), the open engineering-approach search (§4), the concrete method for
-  choosing a winner (§5), the milestone / gate / kill-finding timeline (§6), and
+  engineering goal (§1), the output specification (§2), the fixed-hardware
+  envelope and the application constraints in brief (§3), the decided engineering
+  approach and the alternatives considered (§4), what M2/M3 still characterise for
+  the chosen approach (§5), the milestone / gate / kill-finding timeline (§6), and
   the project-level decisions log (§8).
 - **`thesis-proposal.md`** (this folder) — the academic artefact, wrapped around
   the chosen approach and cross-linked here. Authoritative for: the decided
@@ -33,12 +44,13 @@ is itself part of what the search decides (§2, §4); it is not fixed here.
   `VERIFIED` / `VENDOR-CONFIRMED` / `ESTIMATED` verification legend (§3), the
   research-method description of the tracks (§4), the fallback thesis (§5), the
   open-items list with owners and dates (§7), and the chronological project
-  decision log (§8). The research question (§1) is provisional until the
-  approach search lands.
-- **`implementation-plan.md`** (this folder) — the RTL menu the approach search
-  evaluates: consolidated spec sheet (§2), constraint → viable-technique chain
-  (§5), the candidate configurations with picks and rejections (§6–§7). It does
-  not decide which approach wins; §4–§5 here do.
+  decision log (§8). The research question (§1) is kept provisional pending the
+  advisor, though the engineering approach it wraps is now decided (§4).
+- **`implementation-plan.md`** (this folder) — the RTL detail: consolidated spec
+  sheet (§2), constraint → viable-technique chain (§5), the configurations (§6–§7).
+  As of 2026-09-09 the build target is **Config 7** (Route C, the decided
+  disparity-range sweep); Configs 1–6 are retained there as the alternatives that
+  were considered and set aside.
 - **`../stereo_camera_fpga/`** — the FPGA build workspace (no RTL yet).
   **`../stereo_camera/`** — the supporting Raspberry Pi stereo rig.
   **`../stereo_camera_fpga/research/synthesis/`** — the neutral technique /
@@ -68,15 +80,16 @@ against stored frames (the M2 + M3 fallback, §6).
 - active illumination or a projected pattern;
 - monocular / single-camera depth.
 
-**Deliberately left open — the output granularity.** Whether the system emits a
-full dense disparity map, a sparse/semi-dense near output, or a bare
-boolean/zoned flag is *not* decided here. It is an outcome of the §4 approach
-search, scored by §5. What is fixed is the decision the system must deliver and
-the reliability bar it must clear (§2.5); a dense depth map is one admissible
-route (Route A, §4), not an exclusion.
+**Decided 2026-09-09 — the output granularity.** The system emits a
+**boolean-or-zoned range-threshold flag** (optionally carrying the surviving
+plane index), *not* a dense disparity map and *not* a sparse key-point set. What
+binds every part of the design is the decision the system must deliver and the
+reliability bar it must clear (§2.5). Boolean-vs-zoned for v1 is still open
+(§2.9).
 
-Passive SWIR stereo is fixed. The matching **style** — dense, semi-dense,
-sparse, key-point, flow-assisted — is an open search (§4). The sensor rides a
+Passive SWIR stereo is fixed. The matching **style** is also decided: a
+**band-limited disparity-range sweep** — cost evaluated only at the `K` disparity
+planes of the watch band, never an `argmin` over `0..D` (§4). The sensor rides a
 **moving platform** (not a fixed-mount zone monitor), with closing speeds up to
 ~600 m/s, and the system is **purely passive** — no active illumination, no
 sensor fusion. These narrow the design; see §3.
@@ -91,26 +104,26 @@ sensor fusion. These narrow the design; see §3.
   the work.
 - No prior real-time FPGA stereo work runs on a device this small / this shape,
   and none uses a SWIR sensor — so the platform itself carries the research
-  contribution whatever engineering approach the search selects (§7).
+  contribution regardless of the engineering approach (§7).
 
 Decided hardware / sensor spec: `thesis-proposal.md` §2.
 
 ---
 
-## 2. What the system must decide — and the open granularity question
+## 2. What the system must decide
 
 The system must deliver a trustworthy **in-band decision** — is an object within
-`[Z_near, Z_far]` — at frame rate. The *form* of that output is not fixed:
+`[Z_near, Z_far]` — at frame rate. As of 2026-09-09 the *form* of that output is
+decided (§4):
 
-- the **minimum** is a boolean (or zoned N-bit) flag (§2.1–§2.3);
-- a route that naturally produces more — a sparse near-match list, a semi-dense
-  near mask, a full disparity map — is admissible if it clears the §2.5
-  reliability bar within the §3 envelope;
-- which granularity is actually built is decided by the §4 approach search
-  (§5.3), not here.
+- a **boolean (or zoned N-bit) flag** (§2.1–§2.3), optionally carrying the
+  surviving watch-band plane index for debug / display;
+- **no dense disparity map and no sparse key-point list** — the band-limited
+  range sweep never produces one;
+- boolean-vs-zoned for v1 is the one open sub-choice (§2.9).
 
-The rest of this section specifies the minimum (boolean/zoned) output and the
-reliability metric that binds *every* route regardless of granularity.
+The rest of this section specifies that boolean/zoned output and the reliability
+metric that binds it.
 
 ### 2.1 What fires
 
@@ -171,8 +184,8 @@ the flag nor the policy; both are §2.9 open items.
 ### 2.8 What relaxing the metric-depth requirement buys
 
 Because the system owes a *decision*, not a metric depth map, several of the
-expensive parts of stereo relax — this holds for every route in §4, most
-strongly for Route C:
+expensive parts of stereo relax — and the decided approach (§4, the band-limited
+range sweep) is the one that takes all of them:
 
 - **Density is a free variable** — the output is a decision, not a map, so
   dense / semi-dense / sparse are all admissible and the bandwidth budget
@@ -290,24 +303,33 @@ Full detail and all bandwidth arithmetic: `thesis-proposal.md` §2–§3,
 
 ---
 
-## 4. The approach search — options to evaluate
+## 4. The decided engineering approach — a band-limited disparity-range sweep
 
-Passive SWIR stereo is fixed; the matching **style** — and with it the output
-granularity — is open, and **none of the options below is privileged**. The job
-of M2 / M3 (§6) is to find the most promising engineering approach for the §2
-decision on the §3 hardware, scored by §5. The research framing is finalised
-around the winner afterward (§7).
+**Decided 2026-09-09.** Passive SWIR stereo was already fixed; the matching
+**style** is now decided too. The system performs a **band-limited
+disparity-range sweep**: rectify on the fly (§3.2) → Census transform → evaluate
+the Hamming cost only at the `K` disparity planes of the configured watch band →
+per-pixel confidence gates → spatial reduction → a two-frame Δd confirm → a
+boolean/zoned readout. It never runs an `argmin` over `0..D` and never emits a
+disparity map. This is the route the earlier search called **Route C**; its RTL
+form is `implementation-plan.md` **Config 7** and its per-stage design is
+`../stereo_camera_fpga/design/CLAUDE.md`.
 
-### 4.1 Three routes, presented as peers
+What M2 / M3 (§6) now do is **characterise and parameterise this one approach**
+against the §2 decision on the §3 hardware, scored by §5 — not choose between
+routes. The research framing is finalised around it afterward (§7).
 
-The candidate space groups into three routes. They are **peers, not a ranking** —
-the work began aimed at Route A (a dense map, the textbook stereo output), and
-the research since suggests the close-range-decision goal relaxes the expensive
-parts (§2.8), so how far the output can be reduced is itself part of the
-question. All three share the same front end: rectify on the fly (§3.2) → Census
-transform.
+### 4.1 The decision, and the alternatives set aside
 
-- **Route A — a dense disparity map.** Census/SAD cost, W×W aggregation,
+The work began aimed at a dense disparity map (Route A, the textbook stereo
+output). The research since (§2.8) showed the close-range-decision goal relaxes
+the expensive parts of stereo — the disparity search collapses to ~one plane,
+density becomes a free variable, sub-pixel stops being load-bearing — so the
+disparity-range sweep delivers the decision at the smallest on-chip footprint of
+anything considered. The two alternatives, kept here as the record of what was
+weighed:
+
+- **Route A — a dense disparity map (set aside).** Census/SAD cost, W×W aggregation,
   winner-take-all, one disparity per pixel; optional stronger smoothing
   (dual-path SGM) or a density-reduced semi-dense seed-and-grow variant. The
   route the work started from. For a band decision the dense forms can run as a
@@ -318,38 +340,42 @@ transform.
   tool to close timing on, and their per-path accumulators want BRAM the A1
   lacks; a full raster per frame is also what the streaming budget least wants.
   RTL: `implementation-plan.md` §6 Configs 1–4, 6.
-- **Route B — bounded sparse key-point matching.** Single-scale FAST/Harris →
-  BRIEF or the reused Census word → 1-D along-row Hamming search → bounded verify
-  (LRC + ordering + fixed epipolar offset) → short list of matched near points.
-  **No RANSAC, no triangulation, no variable-length scatter/gather** — the goal
-  needs a bounded set of near matches, not a point cloud. *Strain on the A1:* the
-  detector + non-max suppression + top-K ranking are extra fabric structure the
-  dense route skips, single-scale only (no image pyramid in 160 KB), list /
+- **Route B — bounded sparse key-point matching (set aside).** Single-scale
+  FAST/Harris → BRIEF or the reused Census word → 1-D along-row Hamming search →
+  bounded verify (LRC + ordering + fixed epipolar offset) → short list of matched
+  near points. **No RANSAC, no triangulation, no variable-length scatter/gather.**
+  *Why set aside:* the detector + non-max suppression + top-K ranking are extra
+  fabric structure, single-scale only (no image pyramid in 160 KB), list /
   bucket / verify sequencing with no CPU — and SWIR texture starvation on top,
-  giving too few / too-weak key-points in exactly the target scenes. Lowest
-  output bandwidth; reuses Route A's Census datapath. RTL: `implementation-plan.md`
-  §6 Config 5.
-- **Route C — a direct range-threshold plane-sweep.** Never builds a map:
-  Census-transform both images, compute the Hamming cost at just the `K` planes
-  of a watch band, gate each pixel with per-pixel confidence filters (texture
-  gate + curve-shape reject + LRC), reduce the surviving near mask spatially
-  (U/V-disparity histograms), confirm with a two-frame Δd test, emit a
-  boolean/zoned readout. The most goal-aligned route. *Strain on the A1:* the
-  `K`-plane cost bank must run combinational at pixel rate — **this is the
-  timing-closure gate** — and false positives must be held down without a static
-  background model (the platform moves, §3.1). RTL: `implementation-plan.md` §6
-  Config 7; full pipeline `../stereo_camera_fpga/design/CLAUDE.md`.
+  giving too few / too-weak key-points in exactly the target scenes, where a
+  missed detection is the safety-critical failure. Retained as an *additive*
+  fast-path channel option inside the chosen approach, not as the front end
+  (`../stereo_camera_fpga/design/CLAUDE.md`, keypoint-pre-gate variant). RTL:
+  `implementation-plan.md` §6 Config 5.
+- **Route C — the decided approach: a direct range-threshold plane-sweep.** Never
+  builds a map: Census-transform both images, compute the Hamming cost at just
+  the `K` planes of a watch band, gate each pixel with per-pixel confidence
+  filters (texture gate + curve-shape reject + LRC), reduce the surviving near
+  mask spatially (U/V-disparity histograms), confirm with a two-frame Δd test,
+  emit a boolean/zoned readout. *Strain on the A1 to resolve in M2:* the `K`-plane
+  cost bank must run combinational at pixel rate — **this is the timing-closure
+  gate** — and false positives must be held down without a static background model
+  (the platform moves, §3.1). RTL: `implementation-plan.md` §6 Config 7; full
+  pipeline `../stereo_camera_fpga/design/CLAUDE.md`.
 
-The head-to-head of Route A's few-plane form against Route B, with techniques and
-FPGA literature, is
+Background on how the dense few-plane form was weighed against bounded
+key-point, with techniques and FPGA literature:
 `../stereo_camera_fpga/research/synthesis/dense-vs-keypoint-for-threshold-alarm.md`
-(its recommendation: dense few-plane primary, bounded key-point as the
-M2-characterised challenger, decide in M3 on measured false-negative rate +
-fmax + BRAM). Route C is the detailed form of that "dense few-plane" entry.
+(a point-in-time analysis; its "decide in M3" recommendation is superseded by the
+2026-09-09 decision).
 
-### 4.2 Candidate menu (RTL configs)
+### 4.2 The configuration built, and the ones considered
 
-Full RTL detail for each is in `implementation-plan.md` §6.
+The build target is the **band-limited plane-sweep / disparity-threshold
+trigger** (Route C, `implementation-plan.md` §6 Config 7). The other rows are the
+alternatives that were weighed and set aside (§4.1); they are kept for the record
+and as M2 comparison points if a synthesis result forces a rethink. Full RTL
+detail for each is in `implementation-plan.md` §6.
 
 | Approach | Route | What it is | A1 fit | Main risk |
 |---|---|---|---|---|
@@ -358,7 +384,7 @@ Full RTL detail for each is in `implementation-plan.md` §6.
 | **AD-Census + cross-based aggregation** | A | Capped AD + Census cost, adaptive "+"-shaped support from 4 arm registers | Small extra logic on Census; cheap in registers, no big buffer | Adds a data-dependent stage; needs a synthesis run to confirm it stays cheap |
 | **Semi-dense seed-and-grow / ELAS-style** | A | Confident Census/Hamming seeds → guided fill along gradients, fan-out bounded on fabric | Emits far less than a dense map; reintroduces a smoothness prior cheaply | Bounding the growth on fabric without the data-dependent tail; every surveyed system used an ARM core to grow |
 | **Bounded sparse key-point** | B | Single-scale FAST/Harris + BRIEF or reused Census word + 1-D along-row Hamming; hard cap + spatial buckets + top-K; deterministic LRC + ordering + fixed epipolar-offset + parabola sub-pixel; **no RANSAC / triangulation / scatter-gather** | Lowest output bandwidth; reuses the Census datapath; the band decision needs a bounded set of near matches, not a point cloud | SWIR texture starvation → too few / too-weak key-points in exactly the fog / glass / low-light scenes the work targets |
-| **Band-limited plane-sweep / disparity-threshold trigger** | C | Census + Hamming cost at `K` watch-band planes only; per-pixel texture / curve-shape / LRC gates; per-frame far-prior; U/V-disparity spatial reduction; two-frame Δd confirm; boolean/zoned readout. **No `argmin` over `0..D`, no disparity map.** | Smallest on-chip footprint of the three routes; disparity search already collapsed to ~one plane; no cost volume, no dense-map writes | The `K`-plane Hamming bank must run combinational at pixel rate — the timing-closure gate; false positives without a static background model |
+| **Band-limited plane-sweep / disparity-threshold trigger — DECIDED (2026-09-09)** | C | Census + Hamming cost at `K` watch-band planes only; per-pixel texture / curve-shape / LRC gates; per-frame far-prior; U/V-disparity spatial reduction; two-frame Δd confirm; boolean/zoned readout. **No `argmin` over `0..D`, no disparity map.** | Smallest on-chip footprint of the options considered; disparity search already collapsed to ~one plane; no cost volume, no dense-map writes | The `K`-plane Hamming bank must run combinational at pixel rate — the timing-closure gate; false positives without a static background model |
 | **Dual-path (H+V) SGM via dependency-relaxation** | A | H + V path aggregation only, recursion reading n pixels back, datapath replicated across n PUs | Avoids the width-scaling diagonal buffers and the wide comparator tree | Quantified accuracy cost +0.12 disparity error / +1.96 % bad-pixel per PU; only if resource headroom remains |
 | **Optical flow as an assist** | A/C | Frame-to-frame key-point tracking to amortise detection | Bounded if track count + iterations are capped | Orthogonal — lowers per-frame detect cost, does not itself produce disparity |
 
@@ -377,23 +403,22 @@ Named for completeness; the exclusion is architectural, not a close call.
 - **Image pyramids / integral images** (DoG, SURF, CenSurE, BRISK scale space) —
   the octave stack / summed-area table does not fit in BRAM at 640×512.
 
-### 4.4 What relaxing the metric-depth requirement changes per route
+### 4.4 What the decided approach takes from §2.8
 
-Every route benefits from §2.8: the single/few-plane band test collapses the
-disparity search, there is no dense-map write requirement, and density is a free
-variable. Route B and the semi-dense variant of Route A shrink the BRAM row
-budget most (leaving more headroom for the rectification `k`, §3.2); Route C
-shrinks the on-chip footprint furthest of all. The counter-pressure from SWIR
-texture starvation (§2.8) is heaviest on the pure-local dense forms of Route A
-and on Route B, and lightest on the semi-dense middle and on Route C's per-frame
-far-prior + coherence stack.
+The band-limited range sweep takes every relaxation §2.8 allows: the band test
+collapses the disparity search to ~one plane, there is no dense-map write
+traffic, density is a free variable, and sub-pixel is dropped. It shrinks the
+on-chip footprint furthest of the options considered. The remaining
+counter-pressure is SWIR texture starvation (§2.8); the approach absorbs it with
+its per-frame far-prior + spatial-coherence + Δd stack rather than with
+aggregation.
 
-### 4.5 Deferred side option — monocular TTC looming channel (NOT in the search)
+### 4.5 Deferred side option — monocular TTC looming channel (NOT part of the approach)
 
 **Monocular time-to-contact (TTC) / optical-expansion looming.** Recorded
-2026-09-08 as an optional future **side-experiment** — **not** a route evaluated
-by §4–§5, **not** part of the granularity question, and **not** on the M1–M4
-critical path. Do not integrate it into the main pipeline now.
+2026-09-08 as an optional future **side-experiment** — **not** part of the
+decided range-sweep approach, and **not** on the M1–M4 critical path. Do not
+integrate it into the main pipeline now.
 
 Kept on the books because it is cheap to bolt on and cheap to falsify: it reuses
 the front end every stereo route already builds (rectify → Census / gradient),
@@ -431,7 +456,12 @@ not a calibrated band; and `Δs ∝ f_px·S/Z²` sends small (≲ 3 cm) or far
 
 ---
 
-## 5. Selection method — how the winner is picked
+## 5. What M2/M3 characterise for the decided approach
+
+The engineering approach is decided (§4). M2/M3 no longer choose between routes;
+they **characterise and parameterise the band-limited range sweep** — set `K`
+(watch-band width), boolean vs zoned, whether a key-point pre-gate earns its
+place — and either **confirm it clears the bar or return a kill finding** (§6).
 
 ### 5.1 Evaluation criteria
 
@@ -446,21 +476,20 @@ All driven by the §2 in-band decision:
 5. **Resource fit** — CPE utilisation, BRAM against the ~160 KB line
    (after the rectification `k` budget), residual PSRAM traffic.
 6. **Timing-closure risk / confidence on `nextpnr-himbaechel`** — the real
-   feasibility gate (§3.2).
+   feasibility gate (§3.2), and for this approach specifically the `K`-plane
+   Hamming bank at pixel rate.
 7. **SWIR-texture robustness** in fog / glass / low-light, reported spatially.
 8. **End-to-end latency** vs the §2.4 budget — at ~600 m/s the loop only closes
    if this is single-digit ms (§3.1).
-9. **Output granularity actually delivered** vs. what the §2 decision needs — a
-   route that clears the bar while emitting *less* is preferred under the §3.2
-   bandwidth budget; a route that needs a full dense raster to hit the bar pays
-   for it here.
 
 ### 5.2 Scoring
 
-Criterion 2 (false-negative rate on close objects) is a **hard gate** — a
-candidate that cannot clear the agreed target is out regardless of its other
-numbers. The remaining criteria are a weighted comparison, with the §2.9
-money-scene weighting setting how heavily criterion 7 counts.
+Criterion 2 (false-negative rate on close objects) is a **hard gate** — if the
+chosen approach cannot clear the agreed target it is a kill finding (§6),
+regardless of its other numbers. The remaining criteria are characterisation
+results and inputs to the `K` / boolean-vs-zoned / key-point-pre-gate parameter
+choices, with the §2.9 money-scene weighting setting how heavily criterion 7
+counts.
 
 **Write the kill line before M3:** the minimum fps + minimum detection
 reliability below which the goal is not met, agreed with the advisor. Without it
@@ -468,15 +497,16 @@ up front, the pressure to flatter a weak result is irresistible. A defensible
 negative outcome — "no candidate approach clears the bar on this part + this
 sensor" — is only honest if the bar predates the result.
 
-### 5.3 How the milestones feed the pick
+### 5.3 How the milestones feed the parameterisation
 
-- **M2** (synthesis sweep) → the feasible set: which candidates close timing at
-  pixel rate and fit BRAM (Gate C, §6).
-- **M3** (implement + benchmark the feasible set against stored frames) →
-  the §5.1 numbers → **the approach is selected here — including the output
-  granularity it commits to (dense map / sparse / bare flag).**
-- **M4** (live integration) → validation of the selected approach on real
-  hardware, not a re-open of the choice.
+- **M2** (synthesis sweep) → does the range-sweep RTL (Config 7) close timing at
+  pixel rate and fit BRAM, and at what `K` / resolution / disparity range
+  (Gate C, §6). A "no point clears the product minimum" result is a kill finding.
+- **M3** (implement + benchmark against stored frames) → the §5.1 numbers →
+  **`K`, boolean vs zoned, and whether a key-point pre-gate is used are fixed
+  here**, and the approach is confirmed against the bar or killed.
+- **M4** (live integration) → validation of the approach on real hardware, not a
+  re-open of the choice.
 
 ### 5.4 Evidence standard
 
@@ -537,20 +567,24 @@ unproven toolchain on this device).*
 ### M2 (= Track B) — Synthesis-only feasibility sweep
 *Needs no working silicon — starts day one, in parallel with M1.*
 
-- Push the §4 candidate menu through yosys / nextpnr as **parameterised RTL**
-  (resolution, disparity range, window size as synthesis-time generics),
+- Push the **Route C RTL** (Config 7, plus its `K` / resolution / disparity-range
+  / key-point-pre-gate variants) through yosys / nextpnr as **parameterised RTL**
+  (`K`, resolution, disparity range, window size as synthesis-time generics),
   recording CPE utilisation, achievable clock, BRAM usage, and — critically —
-  whether timing closes at pixel rate on the young flow, for each.
-- **Gate C** (~wk 10): enough sweeps done to name the 2–3 feasible
-  configurations to carry into M3.
+  whether the `K`-plane Hamming bank closes timing at pixel rate on the young
+  flow.
+- **Gate C** (~wk 10): enough sweeps done to confirm the range sweep closes
+  timing and to fix the feasible `K` / resolution envelope for M3 (or to return a
+  kill finding).
 
 ### M3 (= Track C) — Implement & benchmark the feasible set
 *Depends on M2's Gate C. Does not need M1 to have succeeded — runs against
 stored test-vector frames even if bring-up has stalled.*
 
-- Weeks ~10–20: build and benchmark the feasible configurations against stored
-  frames + known-distance SWIR targets, scored by the §5.1 criteria.
-- **The approach is selected here** (§5.3).
+- Weeks ~10–20: build and benchmark the range-sweep configuration(s) against
+  stored frames + known-distance SWIR targets, scored by the §5.1 criteria.
+- **The approach's parameters (`K`, boolean vs zoned, key-point pre-gate y/n) are
+  fixed here, and it is confirmed against the bar or killed** (§5.3).
 
 ### M4 (= Track D) — Live integration & real-hardware validation
 *Depends on M1 Gate B and M3's selected approach. Stretch goal, not
@@ -571,16 +605,17 @@ load-bearing — per the fallback below.*
 Each is a legitimate stop, *provided the §5.2 kill line was written first*:
 
 - **Rectification `k`** cannot be bounded small enough to leave BRAM room for
-  the matching window `W` and disparity buffers `D` for *any* candidate
-  approach (including the sparse / semi-dense ones, which need fewer rows).
-- **No candidate** clears the fps + false-negative gate in M2 / M3.
+  the `K`-plane matcher and its line-buffer band, even at the minimum viable `K`
+  and window size.
+- **The range-sweep** does not clear the fps + false-negative gate in M2 / M3 —
+  the `K`-plane Hamming bank will not close timing at pixel rate, or the
+  false-negative rate at the band edge stays above the agreed target.
 - **Two-camera ingest** cannot be made to stream — SerDes lane count and/or the
   two sensors cannot be line-locked without a frame buffer.
 - **Sensing geometry, not the matcher, is the blocker** — a realistic baseline /
   focal length at ~600 fps cannot yield enough frames of warning (or usable
-  disparity) for the stated detection range, for any route (§2.9, §3.1). This
-  bounds what any matching approach can do and is diagnosable from geometry
-  before M3.
+  disparity) for the stated detection range (§2.9, §3.1). This bounds what any
+  matching approach could do and is diagnosable from geometry before M3.
 
 ### Academic fallback
 
@@ -593,11 +628,16 @@ required advisor pre-approval: `thesis-proposal.md` §5.
 
 ## 7. Research framing (deferred)
 
-The research framing is finalised around whichever approach M3 selects. The
-platform — an open-toolchain, DSP-less FPGA with ~160 KB of BRAM, plus a SWIR
-sensor, with no prior art in any surveyed paper — makes a defensible research
-contribution easy to frame for *any* of the §4 candidates (Route A, B, or C),
-so this is deliberately not being solved now.
+The engineering approach is decided (§4, 2026-09-09 — the band-limited
+disparity-range sweep). The **research question in `thesis-proposal.md` §1 is
+still kept provisional**, to be finalised with the advisor; it now narrows around
+this approach specifically — the feasibility and characterisation of a
+band-limited plane-sweep trigger on this platform (how small `K` can go, how far
+the output reduces, what false-negative rate the part + sensor deliver) — rather
+than "which of three routes wins." The platform — an open-toolchain, DSP-less
+FPGA with ~160 KB of BRAM, plus a SWIR sensor, with no prior art in any surveyed
+paper — makes the contribution defensible regardless, so hardening the exact
+wording is deliberately deferred.
 
 `thesis-proposal.md` holds: the provisional research question (§1), the deferred
 contribution-type discussion (§1.1 + Appendix B), the hardware / bandwidth
@@ -605,8 +645,10 @@ derivation (§2–§3), the research-method description of the tracks (§4), the
 fallback thesis (§5), the open-items list (§7), and the chronological project
 decision log (§8).
 
-**When M3 lands:** finalise `thesis-proposal.md` §1 / §1.1 around the selected
-approach, and record it in `thesis-proposal.md` §8 and in §8 below.
+**Before / with the advisor:** finalise `thesis-proposal.md` §1 / §1.1 around the
+decided approach (the range sweep), and record it in `thesis-proposal.md` §8 and
+in §8 below. M3 supplies the numbers that make the wording concrete, not the
+choice of approach.
 
 ---
 
@@ -662,6 +704,26 @@ rolls up the open items.
   `../stereo_camera_fpga/research/synthesis/time-to-contact-explained.md` §6–§7,
   `../stereo_camera_fpga/research/summaries/2026-09-08-monocular-depth-perception.md`,
   `../stereo_camera_fpga/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`.
+- **2026-09-09:** **Engineering approach decided (founder direction).** The
+  open approach search over three peer routes is **closed**: the system will
+  perform a **band-limited disparity-range sweep** — cost tested only at the `K`
+  disparity planes of the watch band, gate / reduce / confirm, boolean-or-zoned
+  readout; **no per-pixel disparity map, no sparse key-point set**. This is
+  **Route C** (`implementation-plan.md` Config 7); the per-stage design is
+  `../stereo_camera_fpga/design/CLAUDE.md`. Consequences applied here: §1–§2
+  (output granularity settled — boolean/zoned, boolean-vs-zoned still open);
+  §4 retitled and rewritten as the decision plus the Route A / Route B
+  alternatives set aside (with the reasoning kept); §5 recast from "pick a
+  winner" to "characterise and parameterise the chosen approach — `K`, boolean vs
+  zoned, key-point pre-gate y/n — and confirm it against the bar or kill it";
+  §5.1 criterion 9 (output-granularity-delivered) dropped as moot; §6 M2/M3 and
+  the kill findings rewritten to bite the range sweep specifically; §7 notes the
+  research question narrows around this approach but stays provisional pending the
+  advisor. The proposal-defense deck (`../presentations/proposal-defense/`) is
+  **frozen** — the defense was delivered 2026-09-08 and that folder is not edited
+  further; the decision post-dates the meeting and is recorded in
+  `../presentations/CLAUDE.md`. Point-in-time research/synthesis docs and council
+  snapshots are left unedited.
 
 ### Open items (rolled up)
 

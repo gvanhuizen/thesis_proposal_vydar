@@ -6,6 +6,17 @@ Once items here are agreed, they fold back into `product-plan.md` /
 `thesis-proposal.md` (pointers noted per item) and the corresponding §7 / §8
 open-item checkboxes get ticked.
 
+**Update 2026-09-09 (after the defense, before this debrief):** the engineering
+approach was decided — a **band-limited disparity-range sweep** (Route C /
+`implementation-plan.md` Config 7); the open search over three peer routes is
+closed (`product-plan.md` §4 / §8). Section A below still describes the
+peer-routes framing as it stood at the defense; where this doc asks about
+"selection across the three routes" (B1, B5, D), the live version is "characterise
+and confirm the decided range-sweep approach." Everything else here — the
+fallback sign-off, the contribution-type question, the quantitative bars, the IP
+boundary, the geometry / camera-sync kill-finding candidates in §F — is
+route-independent and stands.
+
 **Purpose:** the proposal-defense deck asks the committee three questions
 (`../presentations/proposal-defense/deck.md`, "My questions" slide). Two more
 sign-offs are needed before week 1 regardless of the defense outcome. And four

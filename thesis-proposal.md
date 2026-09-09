@@ -7,30 +7,32 @@ decision log); FPGA-track structure was restructured per council review on
 2026-09-03, then [`product-plan.md`](./product-plan.md) was set as the driver
 and this document as the academic artefact behind it later the same day;
 framing revised 2026-09-07 to match the proposal-defense deck
-(`../presentations/proposal-defense/deck.md`) — see decision log. **The research
-question (§1) and the title above are provisional** pending the approach
-selection driven by `product-plan.md`.
-**Last updated:** 2026-09-07
+(`../presentations/proposal-defense/deck.md`); engineering approach **decided
+2026-09-09** (a band-limited disparity-range sweep — `product-plan.md` §4) — see
+decision log. **The research question (§1) and the title above are kept
+provisional** pending the advisor, though the approach they wrap is now decided.
+**Last updated:** 2026-09-09
 **Clock:** 30 weeks, shared with development of the same work as a product
 
 **Goal (drives this proposal):** **real-time close-range detection** on the
 GateMate A1 + passive SWIR stereo head — decide, at the ~600 fps sensor rate,
-whether an object has come within a configurable distance band. The *minimum*
-output is a boolean or zoned flag; the output **granularity** — dense disparity
-map, sparse/semi-dense, or a bare flag — is an outcome of the approach search,
-not fixed. The output spec, the granularity question, the latency budget, the
-safety-critical false-negative metric and the moving-platform / ~600 m/s /
-purely-passive application constraints live in
+whether an object has come within a configurable distance band. **Output decided
+2026-09-09:** a boolean-or-zoned range-threshold flag — *not* a dense disparity
+map and *not* a sparse key-point set. **Approach decided 2026-09-09:** a
+band-limited disparity-range sweep (cost at the `K` watch-band planes only, gate
+/ reduce / confirm; Route C / `implementation-plan.md` Config 7). The output
+spec, the latency budget, the safety-critical false-negative metric and the
+moving-platform / ~600 m/s / purely-passive application constraints live in
 [`product-plan.md`](./product-plan.md) §2–§3. The research framing below is
-finalised around whichever engineering approach `product-plan.md`'s search (its
-§4–§5) selects.
+finalised around that decided approach.
 
 This is the **academic artefact** of the project. The primary driver — the
-goal, the output specification, the open engineering-approach search and how its
-winner is chosen, and the 30-week milestone / gate / kill schedule — is
-[`product-plan.md`](./product-plan.md) in this folder. This document wraps that
-work in the research framing the advisor and committee see, cross-linked to
-`product-plan.md` and finalised once the approach search (Track C / M3) lands.
+goal, the output specification, the decided engineering approach (§4 there — a
+band-limited disparity-range sweep, chosen 2026-09-09), and the 30-week
+milestone / gate / kill schedule — is [`product-plan.md`](./product-plan.md) in
+this folder. This document wraps that work in the research framing the advisor
+and committee see, cross-linked to `product-plan.md`; the research question is
+kept provisional pending the advisor even though the approach is decided.
 It stays authoritative for the decided hardware / sensor spec (§2), the
 bandwidth arithmetic with the verification legend (§3), the research-method
 rationale for the track structure (§4), the fallback thesis (§5), the
@@ -96,34 +98,39 @@ answer, not to prematurely settle:
 
 ## 1. Research question
 
-**Provisional — to be finalised around the engineering approach that
-[`product-plan.md`](./product-plan.md)'s search selects (Track C / M3).** The
-platform (open-toolchain, DSP-less FPGA + passive SWIR stereo) is uncharacterised
-enough that a defensible research question can be framed around any of the
-candidate approaches in `product-plan.md` §4; the statement below is the current
-best formulation, not a commitment.
+**Provisional — kept open pending the advisor, though the engineering approach is
+now decided.** On 2026-09-09 the approach was fixed (`product-plan.md` §4 / §8):
+a **band-limited disparity-range sweep** (Route C / Config 7). The research
+question therefore no longer asks *which* of several routes wins; it narrows to
+the feasibility and characterisation of that one approach. The platform
+(open-toolchain, DSP-less FPGA + passive SWIR stereo) is uncharacterised enough
+that this is still a defensible contribution. The formulation below is the
+current best statement, not yet advisor-agreed.
 
 > On a DSP-less, open-toolchain FPGA (Cologne Chip GateMate A1) fed by a SWIR
-> sensor, which stereo-correspondence approach — a **dense disparity map**, a
-> **bounded sparse key-point** matcher, or a **direct band-limited plane-sweep /
-> disparity-threshold trigger** — best delivers real-time, high-frame-rate
-> **close-range detection** (has an object come within a configurable distance
-> band), under the streaming/line-buffer constraint the platform's memory
-> forces — and how far can the output be reduced (dense map → semi-dense →
-> sparse → bare flag) before detection reliability breaks?
+> sensor, is a **band-limited disparity-range sweep** — matching cost evaluated
+> only at the `K` disparity planes of a configurable watch band, with a
+> boolean/zoned occupancy readout and no per-pixel disparity map — feasible at
+> the ~600 fps sensor rate under the streaming/line-buffer constraint the
+> platform's memory forces; how small can `K` (and the on-chip footprint) be
+> driven; and what close-range detection reliability (in particular the
+> false-negative rate on close objects) does the part + sensor then deliver?
 
-The three approaches are the peer **routes** of `product-plan.md` §4.1; output
-granularity is part of what the question decides, not a fixed premise.
+The earlier form of this question — which of three peer routes (dense disparity
+map, bounded sparse key-point, plane-sweep trigger) best serves the goal, and how
+far the output can be reduced — is superseded by the 2026-09-09 decision; the
+routes and the reasoning for setting A and B aside are in `product-plan.md` §4.
 
 Supporting sub-questions:
 
-- What is *feasible* at all on this device class — which cost function ×
-  density × resolution/disparity-range configurations close timing and fit the
-  ~160 KB BRAM budget on the young `nextpnr-himbaechel` flow (Track A/B)?
-- Of the feasible ones, which best meets the close-range-detection objective on
-  frame rate, detection reliability, and resource cost (Track C)?
-- Does the winning configuration hold up end-to-end on live SWIR hardware
-  (Track D)?
+- What is *feasible* at all on this device class — does the `K`-plane Hamming
+  bank of the range sweep close timing at pixel rate, and at what `K` /
+  resolution / disparity range, inside the ~160 KB BRAM budget on the young
+  `nextpnr-himbaechel` flow (Track A/B)?
+- With the feasible envelope in hand, what `K` / boolean-vs-zoned / key-point
+  pre-gate configuration meets the close-range-detection objective on frame rate,
+  detection reliability, and resource cost — or does none (Track C)?
+- Does that configuration hold up end-to-end on live SWIR hardware (Track D)?
 
 **Why this is a genuine research contribution, not an implementation exercise.**
 The novelty is the platform, not a new algorithm. No prior real-time FPGA stereo
@@ -132,35 +139,36 @@ and none uses a SWIR sensor — the surveyed designs all use large
 Xilinx/Altera devices with hardened DSP arrays and megabytes of BRAM
 (`../stereo_camera_fpga/research/summaries/`). So the achievable
 feasibility/quality/throughput envelope for stereo correspondence on this
-device+sensor combination is genuinely uncharacterised, and selecting the
-approach that best serves a concrete objective (proximity detection) from
-synthesis-backed measurements is an evaluation result the literature does not
-contain. "First open-toolchain stereo bitstream" and "first real-time SWIR FPGA
-stereo depth" are citable secondary outcomes regardless of the fps result (§6).
+device+sensor combination is genuinely uncharacterised, and establishing whether
+a band-limited disparity-range sweep (the approach decided 2026-09-09) can serve
+a concrete objective (close-range detection) on it, from synthesis-backed
+measurements, is an evaluation result the literature does not contain. "First
+open-toolchain stereo bitstream" and "first real-time SWIR FPGA stereo depth" are
+citable secondary outcomes regardless of the fps result (§6).
 
 It is **not** abstract algorithm benchmarking, and it is **not** a
 characterisation of a cost × aggregation × resolution *trade-off surface* (that
-earlier framing is in the §8 decision log). Whichever approach wins the
-`product-plan.md` search, the research question is finalised around it before
-submission.
+earlier framing is in the §8 decision log). The research question is finalised
+around the decided approach before submission, with the advisor.
 
 ### 1.1 Type of contribution
 
-The thesis **broadens** — it carries known stereo-correspondence techniques
-(dense Census/SAD, semi-dense seed-and-grow, bounded sparse key-point matching,
-and a band-limited plane-sweep / disparity-threshold trigger) onto a DSP-less,
-BRAM-starved, open-toolchain FPGA with a SWIR sensor, for a close-range-detection
-objective, and reports what transfers, what is feasible, and what wins. It **deepens** where it measures resource / timing
+The thesis **broadens** — it carries a known stereo-correspondence technique (a
+band-limited plane-sweep / disparity-threshold trigger, building on the dense
+Census/Hamming datapath) onto a DSP-less, BRAM-starved, open-toolchain FPGA with
+a SWIR sensor, for a close-range-detection objective, and reports what transfers
+and what is feasible. It **deepens** where it measures resource / timing
 behaviour undocumented for this device class (M2). It does **not** innovate a
 new matching algorithm and does not need to — the novelty is carrying real-time
-stereo onto this platform at all, and the systematic selection of the best
-approach for the goal. The load-bearing contribution rests on M2 + M3
-(feasibility + evaluation on an uncharacterised platform), which is also what
-the fallback thesis (§5) protects.
+stereo onto this platform at all, and characterising whether the range sweep
+clears the goal on it. The load-bearing contribution rests on M2 + M3
+(feasibility + characterisation on an uncharacterised platform), which is also
+what the fallback thesis (§5) protects.
 
 The full committee-vocabulary mapping (deepen / broaden / innovate; Shaw's
-research-question taxonomy, by track) is **deferred** until the approach is
-chosen — see [Appendix B](#appendix-b-contribution-type-mapping-deferred) and
+research-question taxonomy) is **deferred** until the research question is
+finalised with the advisor — see
+[Appendix B](#appendix-b-contribution-type-mapping-deferred) and
 `product-plan.md` §7.
 
 ## 2. Target hardware & sensor (decided)
@@ -325,33 +333,31 @@ into two independently-gated parallel tracks plus two sequential ones, mapped in
   produce **synthesis-backed place-and-route numbers**, not spreadsheet
   arithmetic — the council was explicit that napkin math here is "dressed-up
   engineering," not a defensible research artefact.
-- **M3 / Track C — implement & benchmark the feasible set.** Runs against stored
-  test vectors, so it does not depend on M1 succeeding. This is the selection
-  experiment: M2 narrows the `product-plan.md` §4 candidate menu — the three
-  peer routes (dense disparity map / bounded sparse key-point / band-limited
-  plane-sweep trigger) and their RTL configs — to the feasible configurations;
-  M3 builds and benchmarks the survivors on equal footing against the
-  `product-plan.md` §5 criteria, and the approach **and its output granularity**
-  are chosen here. This supersedes the 2026-09-03 council's "dense is the thesis
-  spine; sparse is a synthesis-only row, off-thesis" verdict (see §8) — that
-  verdict rested on the goal wanting a dense depth map, which it does not.
-- **M4 / Track D — live integration.** Depends on M1 Gate B and the M3 winner.
-  A stretch goal, not load-bearing — per the fallback in §5.
+- **M3 / Track C — implement & benchmark the decided approach.** Runs against
+  stored test vectors, so it does not depend on M1 succeeding. The engineering
+  approach is decided (2026-09-09 — the band-limited disparity-range sweep,
+  `product-plan.md` §4); M3 no longer chooses between routes. M2 fixes the
+  feasible `K` / resolution envelope; M3 builds and benchmarks the range-sweep
+  configuration(s) against the `product-plan.md` §5 criteria and **fixes `K`,
+  boolean-vs-zoned, and the key-point-pre-gate question — then confirms the
+  approach against the bar or returns a kill finding.**
+- **M4 / Track D — live integration.** Depends on M1 Gate B and the M3
+  configuration. A stretch goal, not load-bearing — per the fallback in §5.
 
 ### Write-up
-Weeks ~26–30: framed around the research question in §1, finalised around the
-M3-selected approach. The feasibility + approach-selection result is the core
-contribution regardless of whether M4 lands; live-hardware fps is validation,
-not the thing defended.
+Weeks ~26–30: framed around the research question in §1. The feasibility +
+characterisation result for the decided approach is the core contribution
+regardless of whether M4 lands; live-hardware fps is validation, not the thing
+defended.
 
 ## 5. Fallback thesis (must be pre-approved by advisor before week 1)
 
 If M1 (Track A) stalls past its Gate A/B kill criteria, or M4 (Track D) live
 integration doesn't land in time: the thesis stands on **M2 + M3 (Track B +
-Track C) alone** — a synthesis/simulation-only feasibility study and selection
-of the best correspondence approach (dense / semi-dense / sparse) for real-time
-proximity detection on a DSP-less, BRAM-constrained, open-toolchain device,
-benchmarked against stored test vectors. The operational form of this fallback,
+Track C) alone** — a synthesis/simulation-only feasibility and characterisation
+study of the decided approach (the band-limited disparity-range sweep) for
+real-time close-range detection on a DSP-less, BRAM-constrained, open-toolchain
+device, benchmarked against stored test vectors. The operational form of this fallback,
 and its kill findings, are in [`product-plan.md`](./product-plan.md) §6. This is
 the council's most load-bearing structural recommendation (3-of-5 advisors
 flagged the missing-fallback gap independently) — the fallback must be defined
@@ -748,6 +754,28 @@ addressed by any advisor round.
     thesis (§5) and this log are unchanged.
   - The council transcripts and the earlier decision-log entries above are
     point-in-time records and were left unedited.
+- **2026-09-09:** **Engineering approach decided (founder direction).** The open
+  approach search over three peer routes is closed: the system performs a
+  **band-limited disparity-range sweep** — matching cost tested only at the `K`
+  disparity planes of the configurable watch band, gate / reduce / confirm,
+  boolean-or-zoned readout; **no per-pixel disparity map, no sparse key-point
+  set**. This is the route earlier called **Route C**; its RTL form is
+  `implementation-plan.md` Config 7 and its per-stage design is
+  `../stereo_camera_fpga/design/CLAUDE.md`. Consequences applied here: the header
+  goal block and §0 note the decision; §1 keeps the research question
+  **provisional pending the advisor** but narrows it around this one approach
+  (feasibility + characterisation of the range sweep — how small `K` can go, what
+  false-negative rate the part + sensor deliver), and the superseded
+  three-route formulation is noted; §4's M3 description changes from "selection
+  experiment" to "parameterise (`K`, boolean-vs-zoned, key-point pre-gate) and
+  confirm-or-kill the decided approach"; §5's fallback becomes a
+  feasibility/characterisation study of that approach; §7 open items adjusted
+  (below). `product-plan.md` §4 / §8 is the authoritative record and keeps
+  Routes A and B as the considered-and-set-aside alternatives. The
+  proposal-defense deck (`../presentations/proposal-defense/`) is **frozen** —
+  the defense was delivered 2026-09-08 and that folder is not edited further; the
+  decision post-dates the meeting and is recorded in `../presentations/CLAUDE.md`.
+  Point-in-time research/synthesis docs and council snapshots left unedited.
 
 ---
 
@@ -789,9 +817,11 @@ Full reasoning: `../stereo_camera_fpga/council/council-transcript-2026-08-05_214
 
 ## Appendix B: contribution-type mapping (deferred)
 
-Preserved for when the engineering approach is chosen (M3) — not load-bearing in
-the current draft. §1.1 carries the short version; this is the full
-committee-vocabulary mapping, to be finalised around the selected approach.
+Preserved for when the research question is finalised with the advisor — not
+load-bearing in the current draft. The engineering approach is decided
+(2026-09-09 — the band-limited disparity-range sweep); the mapping below still
+refers to "selecting among" approaches and is to be trimmed to that one approach
+when §1 hardens. §1.1 carries the current short version.
 
 **Deepen / broaden / innovate** (common in EU/NL programs):
 
