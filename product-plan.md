@@ -67,7 +67,8 @@ if this repo is moved on its own, the `../stereo_camera_fpga/...` links break.
 **Real-time close-range detection** on the Cologne Chip GateMate A1 FPGA fed by
 a **passive SWIR (InGaAs) stereo head**: at the ~600 fps sensor rate, decide
 reliably whether an object has come within a configurable distance band.
-**Missing a close object is the failure that matters most** (§2.5).
+**A nuisance alarm (false positive) is the failure to minimize** (§2.5, revised
+2026-09-18; missing a close object is still measured but no longer dominant).
 
 **"Working v1" means:** a reliable in-band / out-of-band decision at the
 configured band, produced at sensor frame rate, demonstrated on real hardware —
@@ -153,14 +154,19 @@ case to become a selection criterion (§5). Placeholder working assumption until
 then: a few frame-times at 600 fps plus pipeline depth, i.e. single-digit
 milliseconds.
 
-### 2.5 Safety-critical metric
+### 2.5 Primary metric — REVISED 2026-09-18
 
-**A false negative on a close object is the dominant failure** — missing
-something that is actually inside the band. The alarm's target false-negative
-rate at the band edge is stated separately from its false-positive (nuisance)
-rate. Because SWIR matching failure is spatially structured by material
-(specular metal, glass, very low-albedo surfaces), the metric must report
-*where* detection is unreliable, not only an aggregate rate.
+**Decided 2026-09-18: false-positive (nuisance-alarm) rate is now the primary
+metric to minimize, superseding the false-negative-is-dominant framing this
+section carried through 2026-09-17.** False-negative rate on close objects is
+still measured and reported but is no longer weighted highest and no longer a
+hard gate (see §5.2, and the decision log in `thesis-proposal.md` §8). A
+candidate operating point that lowers the false-positive rate wins even at the
+cost of a worse false-negative rate.
+
+Because SWIR matching failure is spatially structured by material (specular
+metal, glass, very low-albedo surfaces), the false-positive metric must also
+report *where* nuisance alarms cluster, not only an aggregate rate.
 
 ### 2.6 Robustness envelope
 
@@ -232,7 +238,9 @@ Bandwidth consequences of all of the above: `thesis-proposal.md` §3,
 - [ ] **Latency budget number** (§2.4) — the alarm consumer's reaction time; if
       it is not single-digit ms the loop does not close at 600 m/s and detection
       must move farther out.
-- [ ] **Quantitative false-negative target** (§2.5), agreed before M3.
+- [ ] **Quantitative false-positive target** (§2.5, revised 2026-09-18), agreed
+      before M3. A false-negative target is still worth agreeing for reporting
+      purposes, but no longer gates the decision.
 - [ ] **Money-scene weighting** — fog dominant, or fog / glass / low-light
       equally weighted; sets how heavily SWIR-texture robustness is weighted in
       selection (§5).
@@ -347,9 +355,14 @@ weighed:
   *Why set aside:* the detector + non-max suppression + top-K ranking are extra
   fabric structure, single-scale only (no image pyramid in 160 KB), list /
   bucket / verify sequencing with no CPU — and SWIR texture starvation on top,
-  giving too few / too-weak key-points in exactly the target scenes, where a
-  missed detection is the safety-critical failure. Retained as an *additive*
-  fast-path channel option inside the chosen approach, not as the front end
+  giving too few / too-weak key-points in exactly the target scenes. This was
+  set aside as a sole front end under the pre-2026-09-18 FN-hard-gate framing
+  (a missed detection was the safety-critical failure); under the current
+  false-positive-first framing (§2.5) a keypoint front end's near-elimination
+  of textureless FP by construction is a reason to *re-examine* it, not a
+  reason on its own to reopen the Route A/B/C decision (still closed, §4).
+  Retained as an *additive* fast-path channel option inside the chosen
+  approach for now, with sole-front-end reconsideration flagged for M2/M3
   (`../stereo_camera_fpga/design/CLAUDE.md`, keypoint-pre-gate variant). RTL:
   `implementation-plan.md` §6 Config 5.
 - **Route C — the decided approach: a direct range-threshold plane-sweep.** Never
@@ -469,9 +482,10 @@ All driven by the §2 in-band decision:
 
 1. **Detection reliability at the band edge** — correct near/far call vs true
    stand-off on known-distance targets.
-2. **False-negative rate on close objects** — the safety-critical failure
-   (§2.5); weighted highest.
-3. **False-positive (nuisance) rate.**
+2. **False-positive (nuisance) rate** — the primary metric to minimize (§2.5,
+   revised 2026-09-18); weighted highest.
+3. **False-negative rate on close objects** — still measured and reported,
+   no longer the dominant weighting or a hard gate (§2.5).
 4. **Sustained fps at the sensor rate.**
 5. **Resource fit** — CPE utilisation, BRAM against the ~160 KB line
    (after the rectification `k` budget), residual PSRAM traffic.
@@ -482,12 +496,16 @@ All driven by the §2 in-band decision:
 8. **End-to-end latency** vs the §2.4 budget — at ~600 m/s the loop only closes
    if this is single-digit ms (§3.1).
 
-### 5.2 Scoring
+### 5.2 Scoring — REVISED 2026-09-18
 
-Criterion 2 (false-negative rate on close objects) is a **hard gate** — if the
-chosen approach cannot clear the agreed target it is a kill finding (§6),
-regardless of its other numbers. The remaining criteria are characterisation
-results and inputs to the `K` / boolean-vs-zoned / key-point-pre-gate parameter
+Criterion 2 (false-positive / nuisance-alarm rate) is now the **hard gate** —
+if the chosen approach cannot clear the agreed low-FP target it is a kill
+finding (§6), regardless of its other numbers, including false-negative rate.
+This supersedes the prior framing (false-negative rate as the hard gate,
+false-positive rate as a tiebreaker only); see `thesis-proposal.md` §8 decision
+log. False-negative rate (criterion 3) is still tracked and reported but no
+longer gates the decision. The remaining criteria are characterisation results
+and inputs to the `K` / boolean-vs-zoned / key-point-pre-gate parameter
 choices, with the §2.9 money-scene weighting setting how heavily criterion 7
 counts.
 

@@ -556,9 +556,11 @@ and does **not** emit a depth map.
 - *Relationship to the other routes:* Config 7 is the detailed form of the "dense
   few-plane occupancy test" noted for Route A; a **key-point pre-gate** (Config 5
   detector gating which pixels enter the Stage 1 sweep) is a studied variant —
-  viable as an additive fast-path channel, not as the sole front end on
-  false-negative grounds (`../stereo_camera_fpga/design/CLAUDE.md`, variant
-  section).
+  viable as an additive fast-path channel; ruling it out as the sole front end
+  was argued on false-negative grounds (`../stereo_camera_fpga/design/CLAUDE.md`,
+  variant section), an argument weakened by the 2026-09-18 metric reversal
+  (`product-plan.md` §2.5/§4.1) — flagged for re-examination in M2/M3, not
+  decided either way here.
 
 ### 6.3 What to build first (Track A, Gate A)
 
@@ -618,10 +620,11 @@ items bearing directly on §6:
 
 - **Close-range-detection quality bar is undefined.** M3 cannot confirm Config 7
   (or fix `K` / boolean-vs-zoned) without the detection metrics and weighting in
-  `product-plan.md` §5 (detection reliability at the band edge, false-negative
-  rate for close objects, false-positive rate, latency, min valid-match
-  density). It is **not** dense bad-pixel-% versus KITTI/Middlebury. See
-  `thesis-proposal.md` §7 for the research-side kill-criterion requirement.
+  `product-plan.md` §5 (detection reliability at the band edge, false-positive
+  rate — the primary metric and hard gate as of 2026-09-18 — false-negative
+  rate for close objects, latency, min valid-match density). It is **not**
+  dense bad-pixel-% versus KITTI/Middlebury. See `thesis-proposal.md` §7 for
+  the research-side kill-criterion requirement.
 - **Detection range vs. sensing geometry.** A ~12 cm baseline at 600 fps yields
   usable disparity only in the last few metres and ~2–4 frames of warning; if the
   required standoff needs a wider baseline / longer focal length / higher

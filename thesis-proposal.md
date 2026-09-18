@@ -21,10 +21,11 @@ whether an object has come within a configurable distance band. **Output decided
 map and *not* a sparse key-point set. **Approach decided 2026-09-09:** a
 band-limited disparity-range sweep (cost at the `K` watch-band planes only, gate
 / reduce / confirm; Route C / `implementation-plan.md` Config 7). The output
-spec, the latency budget, the safety-critical false-negative metric and the
-moving-platform / ~600 m/s / purely-passive application constraints live in
-[`product-plan.md`](./product-plan.md) §2–§3. The research framing below is
-finalised around that decided approach.
+spec, the latency budget, the primary false-positive-minimization metric
+(revised 2026-09-18 — false negative is measured but no longer the hard gate)
+and the moving-platform / ~600 m/s / purely-passive application constraints
+live in [`product-plan.md`](./product-plan.md) §2–§3. The research framing
+below is finalised around that decided approach.
 
 This is the **academic artefact** of the project. The primary driver — the
 goal, the output specification, the decided engineering approach (§4 there — a
@@ -114,7 +115,9 @@ current best statement, not yet advisor-agreed.
 > the ~600 fps sensor rate under the streaming/line-buffer constraint the
 > platform's memory forces; how small can `K` (and the on-chip footprint) be
 > driven; and what close-range detection reliability (in particular the
-> false-negative rate on close objects) does the part + sensor then deliver?
+> false-positive/nuisance-alarm rate, the primary metric as of 2026-09-18 —
+> false-negative rate on close objects is measured but no longer the
+> gating criterion) does the part + sensor then deliver?
 
 The earlier form of this question — which of three peer routes (dense disparity
 map, bounded sparse key-point, plane-sweep trigger) best serves the goal, and how
@@ -410,9 +413,10 @@ addressed by any advisor round.
 
 - [ ] **Proximity-detection quality bar — resolve before M3.** The metric
       definitions and their weighting live in [`product-plan.md`](./product-plan.md)
-      §5 (detection reliability at the band edge; the safety-critical
-      false-negative rate on close objects; false-positive rate; latency;
-      minimum valid-match density). The research-side requirement this item
+      §5 (detection reliability at the band edge; the false-positive
+      (nuisance-alarm) rate — the primary metric, revised 2026-09-18; the
+      false-negative rate on close objects, now measured/reported only;
+      latency; minimum valid-match density). The research-side requirement this item
       tracks: the **minimum fps + detection reliability below which the product
       story collapses** must be written down as an explicit, pre-agreed kill
       criterion *before* M3 benchmarking. The thesis can honestly conclude "this
@@ -776,6 +780,23 @@ addressed by any advisor round.
   the defense was delivered 2026-09-08 and that folder is not edited further; the
   decision post-dates the meeting and is recorded in `../presentations/CLAUDE.md`.
   Point-in-time research/synthesis docs and council snapshots left unedited.
+- **2026-09-18:** **Primary metric reversed (founder direction).**
+  False-positive (nuisance-alarm) rate is now the metric to minimize and the
+  hard gate in selection; false-negative rate on close objects is still
+  measured and reported but is no longer weighted highest and no longer gates
+  the decision. This supersedes the 2026-08-06-era framing carried in
+  `product-plan.md` §2.5/§5.1/§5.2 (updated in place, same date) and repeated
+  throughout `design_process/` and `../stereo_camera_fpga/design/CLAUDE.md`
+  (updated in place). The Route A/B/C engineering-approach decision (above,
+  2026-09-09) is **not** reopened by this — Route C was chosen primarily on
+  timing-closure / on-chip-footprint grounds, not the FN/FP weighting — but the
+  FN-safety argument used to set aside Route B and to rule out a keypoint
+  sole-front-end is weakened and flagged for re-examination in M2/M3
+  (`product-plan.md` §4.1). `stereo_camera/`'s software reference model
+  (`../stereo_camera/CLAUDE.md`, `../stereo_camera/README.md`,
+  `../stereo_camera/literature/NOTES.md`) is retuned toward the same goal.
+  Point-in-time research/synthesis docs and council snapshots left unedited,
+  each flagged inline where its verdict was built on the superseded framing.
 
 ---
 
