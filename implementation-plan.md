@@ -25,7 +25,7 @@ considered and set aside; see the 2026-09-09 note and `product-plan.md` §4 / §
 > dense disparity map (Configs 1–4, 6), **Route B** a bounded sparse key-point
 > matcher (Config 5), **Route C** a direct band-limited plane-sweep /
 > disparity-threshold trigger (**Config 7**, folded in from
-> `../stereo_camera_fpga/design/CLAUDE.md`).
+> `../fpga-research/design/CLAUDE.md`).
 >
 > **2026-09-09 — approach decided: Config 7 (Route C).** The engineering approach
 > is decided (founder direction, `product-plan.md` §4 / §8): a **band-limited
@@ -50,9 +50,9 @@ This document is the synthesis step between the research and the RTL. It does
 four things, in order:
 
 1. Consolidates the GateMate A1 / Olimex EVB / SWIR-sensor specs into one place
-   (§2) — currently spread across `../stereo_camera_fpga/CLAUDE.md`,
+   (§2) — currently spread across `../fpga-research/CLAUDE.md`,
    `thesis-proposal.md` §2/§3, and
-   `../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`.
+   `../fpga-research/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`.
 2. States the pros and cons of this device versus the FPGAs used in the surveyed
    literature (§3–§4).
 3. Walks the logical chain from each hardware constraint to which stereo-matching
@@ -64,7 +64,7 @@ four things, in order:
 It is written to be read start-to-finish on its own. Two companion files go
 deeper on specific parts and are not required reading here:
 
-- `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+- `../fpga-research/research/synthesis/hardware-and-technique-comparison.md`
   — the neutral reference matrix: full device table, a 13-technique catalogue
   with per-technique "fit" verdicts, an exhaustive constraints/gaps list. This
   document is the opinionated layer on top of it.
@@ -191,7 +191,7 @@ any residual PSRAM use above works against a tight capacity budget too.
 
 ## 3. The literature baseline — what we are comparing against
 
-The two surveys in `../stereo_camera_fpga/research/summaries/` cover 14 papers.
+The two surveys in `../fpga-research/research/summaries/` cover 14 papers.
 Every one runs on a device from this list:
 
 | Device family | Hard DSP/MAC | On-chip BRAM | Hard CPU | Toolchain |
@@ -336,8 +336,8 @@ Each hardware fact drives a specific algorithmic consequence:
   core. Working GateMate soft-core ports (FemtoRV, NEORV32, LiteX VexRiscv/Serv)
   exist and double as a low-risk Track A Gate A bring-up vehicle.
 - **Post-processing is cheap and buys accuracy →** sub-pixel interpolation
-  (LUT + Newton division, no hardware divider), left-right consistency check, and
-  occlusion filling together cost ~5.6K LUT (Ma 2022) and add multi-% accuracy.
+  (LUT + Newton division, no hardware divider) and occlusion filling together
+  cost ~5.6K LUT (Ma 2022) and add multi-% accuracy.
   Budget them as **optional parallel pipeline stages**; they're needed once the
   accuracy/quality bar (open item) is defined.
 - **Track B is a synthesis sweep →** all candidate RTL must be **parameterised**
@@ -441,8 +441,8 @@ boolean-vs-zoned and the key-point-pre-gate question are what M2/M3 now settle.
 - *What:* single-scale FAST/Harris detector → binary descriptor (BRIEF) or
   reused Census word → 1-D along-row Hamming search. **Bounded**: hard
   key-point cap, spatial buckets, top-K by response, so all buffers and cycle
-  counts are static. Verification = left-right consistency + ordering +
-  fixed epipolar-row-offset threshold (from calibration) + parabola sub-pixel.
+  counts are static. Verification = ordering + fixed epipolar-row-offset
+  threshold (from calibration) + parabola sub-pixel.
   **No RANSAC, no triangulation, no variable-length scatter/gather** — the
   proximity goal ("is there a close object") needs a bounded set of near
   matches, not a point cloud, so the CPU-bound irregular tail every surveyed
@@ -472,7 +472,7 @@ boolean-vs-zoned and the key-point-pre-gate question are what M2/M3 now settle.
   removes all list-sequencing, but forgoes the K-plane-bank shrink (no cap ⇒ bank
   sized for peak ⇒ power saving only, not CPE/fmax), and fits the additive-channel
   role, not the input-veto one. Full ups/downs in
-  `../stereo_camera_fpga/design/CLAUDE.md` (keypoint pre-gate variant).
+  `../fpga-research/design/CLAUDE.md` (keypoint pre-gate variant).
 
 **Config 6 — dual-path SGM via dependency-relaxation. *(Route A — considered, set aside 2026-09-09)***
 - *What:* horizontal + vertical path aggregation only, recursion reading the
@@ -489,7 +489,7 @@ boolean-vs-zoned and the key-point-pre-gate question are what M2/M3 now settle.
 **Config 7 — band-limited plane-sweep / disparity-threshold trigger, streaming. *(Route C — DECIDED 2026-09-09, the build target; timing-closure risk on the `K`-plane bank is the open question M2 resolves)***
 
 Folded in 2026-09-07 from a 2026-09-04 design session
-(`../stereo_camera_fpga/design/CLAUDE.md`, where the per-stage reasoning and the
+(`../fpga-research/design/CLAUDE.md`, where the per-stage reasoning and the
 two feeding surveys live). Established terminology: **band-limited plane-sweep
 stereo with a disparity-threshold occupancy readout** — a degenerate plane-sweep
 that tests one or a few disparity hypotheses, decides, and does **not** `argmin`
@@ -504,10 +504,11 @@ and does **not** emit a depth map.
   - **Stage 1 — banded plane-sweep + per-pixel pre-filter.** Census-transform
     both images; compute the Hamming cost at the `K ≈ 30–50` planes of the watch
     band `d_watch..d_max`; emit the winning plane index only for pixels that pass
-    three orthogonal rejects — a **texture / squared-gradient gate** (Konolige
-    SVS), a **curve-shape reject** (3-tap curvature / peak-ratio / second-minimum
-    — the one that catches textureless; LRC alone misses it), and **LRC /
-    uniqueness** (Di Stefano single-pass).
+    two orthogonal rejects — a **texture / squared-gradient gate** (Konolige
+    SVS) and a **curve-shape reject** (3-tap curvature / peak-ratio /
+    second-minimum — catches the textureless case the texture gate misses). No
+    left-right consistency (LRC) / uniqueness check — dropped from scope
+    (2026-09-29, founder call).
   - **Stage 1.5 — per-frame far-prior.** A coarse ~40×32-cell disparity envelope
     from *this* frame's own confident pixels; a near-band pixel is promoted only
     if the local coarse prior is also near-band, or the match is high-confidence
@@ -557,7 +558,7 @@ and does **not** emit a depth map.
   few-plane occupancy test" noted for Route A; a **key-point pre-gate** (Config 5
   detector gating which pixels enter the Stage 1 sweep) is a studied variant —
   viable as an additive fast-path channel; ruling it out as the sole front end
-  was argued on false-negative grounds (`../stereo_camera_fpga/design/CLAUDE.md`,
+  was argued on false-negative grounds (`../fpga-research/design/CLAUDE.md`,
   variant section), an argument weakened by the 2026-09-18 metric reversal
   (`product-plan.md` §2.5/§4.1) — flagged for re-examination in M2/M3, not
   decided either way here.
@@ -630,10 +631,10 @@ items bearing directly on §6:
   required standoff needs a wider baseline / longer focal length / higher
   windowed-ROI frame rate, that is a geometry constraint bounding *every* config,
   diagnosable before M3 (`product-plan.md` §6 kill findings,
-  `../stereo_camera_fpga/design/CLAUDE.md` §4).
+  `../fpga-research/design/CLAUDE.md` §4).
 - **IMU / ego-motion estimation on the platform?** Sets Config 7 Stage 3 —
   motion-compensated prediction (Barry & Tedrake) vs. plain N-of-M + monotonic-Δd
-  (`../stereo_camera_fpga/design/CLAUDE.md` §7).
+  (`../fpga-research/design/CLAUDE.md` §7).
 - **SWIR camera LVDS interface vs. GateMate DDR-GPIO / SerDes fit is unchecked.**
   Gates the Config choice only indirectly, but gates Track A Gate B directly.
 - **Rectification buffer is unsized.** Whether epipolar rectification fits in
@@ -658,23 +659,23 @@ items bearing directly on §6:
 ## Sources
 
 (paths relative to this folder; the FPGA-repo files are in the sibling
-`../stereo_camera_fpga/`)
+`../fpga-research/`)
 
-- `../stereo_camera_fpga/research/summaries/2026-08-05-fpga-stereo-vision-pipelines.md`
-- `../stereo_camera_fpga/research/summaries/2026-08-05-sad-census-stereo-matching.md`
-- `../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`
-- `../stereo_camera_fpga/research/summaries/2026-09-01-swir-stereo-depth-perception.md`
-- `../stereo_camera_fpga/research/summaries/2026-09-04-plane-sweep-disparity-threshold-trigger.md`
+- `../fpga-research/research/summaries/2026-08-05-fpga-stereo-vision-pipelines.md`
+- `../fpga-research/research/summaries/2026-08-05-sad-census-stereo-matching.md`
+- `../fpga-research/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`
+- `../fpga-research/research/summaries/2026-09-01-swir-stereo-depth-perception.md`
+- `../fpga-research/research/summaries/2026-09-04-plane-sweep-disparity-threshold-trigger.md`
   (Config 7)
-- `../stereo_camera_fpga/research/summaries/2026-09-04-textureless-region-false-positive-suppression.md`
+- `../fpga-research/research/summaries/2026-09-04-textureless-region-false-positive-suppression.md`
   (Config 7 pre-filters)
-- `../stereo_camera_fpga/research/synthesis/stereo-vision-techniques-explained.md`
-- `../stereo_camera_fpga/research/synthesis/top-5-papers-to-read.md`
-- `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
-- `../stereo_camera_fpga/research/synthesis/dense-vs-keypoint-for-threshold-alarm.md`
-- `../stereo_camera_fpga/design/CLAUDE.md` — Config 7 per-stage design + budget
+- `../fpga-research/research/synthesis/stereo-vision-techniques-explained.md`
+- `../fpga-research/research/synthesis/top-5-papers-to-read.md`
+- `../fpga-research/research/synthesis/hardware-and-technique-comparison.md`
+- `../fpga-research/research/synthesis/dense-vs-keypoint-for-threshold-alarm.md`
+- `../fpga-research/design/CLAUDE.md` — Config 7 per-stage design + budget
 - `thesis-proposal.md` (this folder)
-- `../stereo_camera_fpga/council/council-transcript-2026-08-05_1752.md`,
-  `../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`,
-  `../stereo_camera_fpga/council/council-transcript-2026-08-06_1043.md`
-- `../stereo_camera_fpga/CLAUDE.md` and the `thesis/` top-level `CLAUDE.md`
+- `../fpga-research/council/council-transcript-2026-08-05_1752.md`,
+  `../fpga-research/council/council-transcript-2026-08-05_2141.md`,
+  `../fpga-research/council/council-transcript-2026-08-06_1043.md`
+- `../fpga-research/CLAUDE.md` and the `thesis/` top-level `CLAUDE.md`

@@ -9,7 +9,7 @@ master's thesis built from two separate implementations that live in sibling
 directories on disk, each their own git repo:
 
 - `../stereo_camera/` (github.com/gvanhuizen/stereo_camera)
-- `../stereo_camera_fpga/` (github.com/gvanhuizen/stereo_camera_fpga)
+- `../fpga-research/` (github.com/gvanhuizen/stereo_camera_fpga — directory renamed locally, GitHub repo not yet renamed)
 
 There is no source code here, no build/lint/test tooling, and none is expected.
 Three tracked files:
@@ -45,14 +45,14 @@ Three tracked files:
   reasoning and rejections. **As of 2026-09-09 the build target is Config 7**
   (Route C — band-limited plane-sweep / disparity-threshold trigger = the decided
   disparity-range sweep; per-stage design in
-  `../stereo_camera_fpga/design/CLAUDE.md`). Configs 1–6 (Route A dense forms +
+  `../fpga-research/design/CLAUDE.md`). Configs 1–6 (Route A dense forms +
   Config 5 Route B bounded sparse key-point) are retained as the alternatives
   considered and set aside, and as M2 comparison points. Draft, council-reviewed
   2026-09-01, re-scoped 2026-09-03, reorganised into routes 2026-09-07, approach
   decided 2026-09-09. The build target is set by `product-plan.md` §4.
 
 Also present, **not authoritative** — point-in-time prep artifacts (like the
-`../stereo_camera_fpga/council/` snapshots), safe to supersede:
+`../fpga-research/council/` snapshots), safe to supersede:
 
 - **`advisor-sync-2026-09.md`** — debrief agenda for the proposal defense: the
   two before-week-1 sign-offs (fallback thesis, combined scope), the three deck
@@ -64,7 +64,7 @@ Also present, **not authoritative** — point-in-time prep artifacts (like the
 ## Directory-layout dependency
 
 The relative links in `product-plan.md`, `thesis-proposal.md` and
-`implementation-plan.md` (`../stereo_camera/...`, `../stereo_camera_fpga/...`)
+`implementation-plan.md` (`../stereo_camera/...`, `../fpga-research/...`)
 assume the repos stay siblings under the same parent directory (currently
 `thesis/`). If this repo is ever cloned or moved on its own, those links break —
 they are not git submodules and there's no fetch/resolve mechanism, just
@@ -89,10 +89,10 @@ relative filesystem paths.
 - `implementation-plan.md` in this folder is authoritative for the **RTL detail**
   — the build target is Config 7 (Route C, the decided range sweep); Configs 1–6
   are the set-aside alternatives.
-- `../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+- `../fpga-research/research/synthesis/hardware-and-technique-comparison.md`
   is the neutral GateMate-A1-vs-surveyed-literature reference matrix that both
-  docs above draw on. `../stereo_camera_fpga/research/` holds the paper surveys
-  (`summaries/`) and the other synthesis docs; `../stereo_camera_fpga/council/`
+  docs above draw on. `../fpga-research/research/` holds the paper surveys
+  (`summaries/`) and the other synthesis docs; `../fpga-research/council/`
   holds the `/llm-council` deliberation snapshots referenced in the decision log.
 - `../stereo_camera/README.md` and `../stereo_camera/literature/NOTES.md`
   remain authoritative for the camera-rig work and baseline/accuracy
@@ -122,7 +122,7 @@ sweep** — Census transform → Hamming cost only at the `K` disparity planes o
 watch band → per-pixel confidence gates → spatial reduction → two-frame Δd
 confirm → boolean/zoned readout; never `argmin` over `0..D`, never a map. This is
 the route earlier called **Route C**; its RTL form is `implementation-plan.md`
-**Config 7** and its per-stage design is `../stereo_camera_fpga/design/CLAUDE.md`.
+**Config 7** and its per-stage design is `../fpga-research/design/CLAUDE.md`.
 The earlier open search over three peer routes (Route A dense disparity map,
 Route B bounded sparse key-point, Route C plane-sweep trigger) is **closed** —
 `product-plan.md` §4 keeps A and B as the recorded alternatives. What M2/M3 still
@@ -132,7 +132,7 @@ fix: `K`, boolean-vs-zoned, and whether a key-point pre-gate earns its place
 The sensor rides a **moving platform** (no static background model), closing
 speeds up to **~600 m/s**, **purely passive**, anything-near-is-a-valid-trigger,
 with a textureless-object **UNKNOWN state** — folded into `product-plan.md` §3.1 /
-§2.7 on 2026-09-07 (from `../stereo_camera_fpga/design/CLAUDE.md`).
+§2.7 on 2026-09-07 (from `../fpga-research/design/CLAUDE.md`).
 
 `thesis-proposal.md` §1 carries a **provisional** research question framed
 around that goal, **kept provisional pending the advisor** even though the
@@ -143,7 +143,7 @@ platform + sensor, not on characterising an abstract cost × aggregation ×
 resolution
 surface (that framing was dropped 2026-09-03 — see the proposal's decision log).
 
-FPGA stereo processing (`stereo_camera_fpga/`) is the expected primary
+FPGA stereo processing (`fpga-research/`) is the expected primary
 research contribution; the stereo-vision camera rig (`stereo_camera/`) is
 supporting/practical work. This is the founder's current best guess, not
 settled scope — when it changes (e.g. after M2/M3 results land, or after advisor

@@ -1,7 +1,7 @@
 # Advisor sync — proposal-defense debrief (2026-09)
 
 **Status:** prep artifact for the post-defense debrief. Point-in-time, like the
-`../stereo_camera_fpga/council/` snapshots — **not** a living authoritative doc.
+`../fpga-research/council/` snapshots — **not** a living authoritative doc.
 Once items here are agreed, they fold back into `product-plan.md` /
 `thesis-proposal.md` (pointers noted per item) and the corresponding §7 / §8
 open-item checkboxes get ticked.
@@ -158,7 +158,7 @@ advisor / stakeholder to set. Once agreed, fold into `product-plan.md` §2.4,
 alarm disparity plane `d_alarm` set **≥ 1 watch-band plane early** to absorb it.
 
 **Rationale:** at ~600 m/s the object travels ~1.0 m/frame; 3 m → contact is
-~5 ms — "the whole budget" (`../stereo_camera_fpga/design/CLAUDE.md` §4). Stage 2
+~5 ms — "the whole budget" (`../fpga-research/design/CLAUDE.md` §4). Stage 2
 needs a whole frame before it can emit a cluster, so the latency *floor* is
 ~1 frame ≈ 1.67 ms; 2 frames leaves headroom for the confirm stage. The
 remaining ≥ 2 ms of the 3 m→contact window belongs to the **alarm consumer**,
@@ -234,7 +234,7 @@ with the founder / stakeholder.
 ## E. "Why GateMate, and not another small / open FPGA?"
 
 Flagged in
-`../stereo_camera_fpga/research/synthesis/hardware-and-technique-comparison.md`
+`../fpga-research/research/synthesis/hardware-and-technique-comparison.md`
 as unaddressed anywhere and a likely defense question. One-paragraph answer:
 
 > The honest first reason is that the platform was already fixed — the product
@@ -264,7 +264,7 @@ as unaddressed anywhere and a likely defense question. One-paragraph answer:
 ## F. Pre-meeting findings — 2026-09-08 investigation pass
 
 Three direction-independent investigations, written up under
-`../stereo_camera_fpga/research/synthesis/`. Each ends with a verdict and an
+`../fpga-research/research/synthesis/`. Each ends with a verdict and an
 explicit "what this means" line. **Two surfaced kill-finding candidates that the
 committee should weigh in on now, before M2/M3 sink time.**
 
@@ -272,7 +272,7 @@ committee should weigh in on now, before M2/M3 sink time.**
 
 Parametric sweep (script `geometry_feasibility.py`), commits to no band /
 baseline / lens; reproduces the worked example in
-`../stereo_camera_fpga/design/CLAUDE.md` §4 exactly as a calibration check.
+`../fpga-research/design/CLAUDE.md` §4 exactly as a calibration check.
 
 - The binding limit is the **per-frame disparity change** `Δd`, not absolute
   disparity. At 600 m/s / 600 fps, an `f_px = 800` rig keeps `Δd ≥ 1 px` only
@@ -295,7 +295,7 @@ baseline / lens; reproduces the worked example in
 - **The A1's SerDes is 2.5 Gb/s, not 5 Gb/s** (CCGM1A1 datasheet DS1001,
   Feb 2024). Usable ~250 MB/s after 8b/10b — **below a single SWIR stream**
   (344–401 MB/s). The "one 5 Gb/s SerDes lane carries one camera" statement in
-  `stereo_camera_fpga/CLAUDE.md`, `thesis-proposal.md` §7/§8 and
+  `fpga-research/CLAUDE.md`, `thesis-proposal.md` §7/§8 and
   `product-plan.md` §3.2 is wrong on both the rate and the conclusion — correct
   it. Camera ingest must be **parallel DDR-GPIO LVDS**, whose max per-pair data
   rate the datasheet does not state (ask Cologne Chip / Olimex).
@@ -354,4 +354,4 @@ schedule/agenda change, an efficiency.
   than after.
 - **Correction to carry into the docs regardless of the debrief:** SerDes
   2.5 Gb/s (F2) — fix in `thesis-proposal.md` §3/§7/§8, `product-plan.md` §3.2,
-  `stereo_camera_fpga/CLAUDE.md`.
+  `fpga-research/CLAUDE.md`.

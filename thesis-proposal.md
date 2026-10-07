@@ -42,7 +42,7 @@ open-items list (§7), and the chronological decision log (§8).
 The thesis is built from two implementations tracked as separate git repos on
 disk, siblings of this folder:
 
-- **`../stereo_camera_fpga/`** — real-time stereo matching on a Cologne Chip
+- **`../fpga-research/`** — real-time stereo matching on a Cologne Chip
   GateMate A1 FPGA (DSP-less, open-toolchain). Expected **primary research
   contribution**. Its full plan is §1–§8 below.
 - **`../stereo_camera/`** — a working Rust + Python stereo depth rig on two
@@ -60,7 +60,7 @@ when it firms up or changes.
 The FPGA-track plan below supersedes the original 5-phase draft (preserved in
 [Appendix A](#appendix-a-original-draft-proposal-pre-review)) by applying the
 restructuring recommended in
-`../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`. Update
+`../fpga-research/council/council-transcript-2026-08-05_2141.md`. Update
 phase status and open items here as work happens — don't let this drift out
 of sync the way the original draft did.
 
@@ -68,7 +68,7 @@ of sync the way the original draft did.
 kill-gate carries one of three tags — `VERIFIED` (primary-source citation +
 date), `VENDOR-CONFIRMED` (direct vendor contact + date), or `ESTIMATED`
 (proxy/derived, unconfirmed, ± error). Added 2026-08-06 after a council
-session (`../stereo_camera_fpga/council/council-transcript-2026-08-06_1043.md`) caught an
+session (`../fpga-research/council/council-transcript-2026-08-06_1043.md`) caught an
 unverified PSRAM claim being stated as settled fact inside this document —
 see the decision log.
 
@@ -140,7 +140,7 @@ The novelty is the platform, not a new algorithm. No prior real-time FPGA stereo
 work runs on an open-toolchain, DSP-less part with this little on-chip memory,
 and none uses a SWIR sensor — the surveyed designs all use large
 Xilinx/Altera devices with hardened DSP arrays and megabytes of BRAM
-(`../stereo_camera_fpga/research/summaries/`). So the achievable
+(`../fpga-research/research/summaries/`). So the achievable
 feasibility/quality/throughput envelope for stereo correspondence on this
 device+sensor combination is genuinely uncharacterised, and establishing whether
 a band-limited disparity-range sweep (the approach decided 2026-09-09) can serve
@@ -191,7 +191,7 @@ finalised with the advisor — see
   depth — see [open item](#7-open-items-not-yet-resolved) on IP/disclosure.
 
 Full technical detail and rationale: see the "Target hardware" and "Founder
-context" sections of the FPGA repo's top-level `../stereo_camera_fpga/CLAUDE.md`.
+context" sections of the FPGA repo's top-level `../fpga-research/CLAUDE.md`.
 
 ### 2.1 Application scope (folded in 2026-09-04, decision-logged 2026-09-07)
 
@@ -206,7 +206,7 @@ included — is a valid trigger. A textureless close object with no textured rim
 in view is an irreducible residual that falls to an **UNKNOWN** state, not to
 detection. These constraints are authoritative in
 [`product-plan.md`](./product-plan.md) §3.1 / §2.7 and derived in
-`../stereo_camera_fpga/design/CLAUDE.md` §1, §4.
+`../fpga-research/design/CLAUDE.md` §1, §4.
 
 ## 3. Bandwidth arithmetic (first pass done 2026-08-06; PSRAM part ID confirmed 2026-08-06)
 
@@ -226,9 +226,9 @@ did.
 
 **Part-number confirmed 2026-08-06.** The PSRAM identification above
 (2× LY68S3200SLT) was flagged `ESTIMATED` earlier the same day by a
-council session (`../stereo_camera_fpga/council/council-transcript-2026-08-06_1043.md`), which
+council session (`../fpga-research/council/council-transcript-2026-08-06_1043.md`), which
 caught that a same-day independent research pass over the same board
-(`../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`) couldn't
+(`../fpga-research/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`) couldn't
 find the part number in the README/manual text it examined, and used a
 different stand-in chip instead — a genuine "unvalidated claim treated as
 settled" risk. Resolved by going one level deeper than either prior
@@ -324,7 +324,7 @@ council's unanimous critique: this makes the single highest-uncertainty item
 everything else, with no defined fallback if it slips.
 
 The restructure (per
-`../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`) splits it
+`../fpga-research/council/council-transcript-2026-08-05_2141.md`) splits it
 into two independently-gated parallel tracks plus two sequential ones, mapped in
 `product-plan.md` §6 as milestones M1–M4:
 
@@ -423,7 +423,7 @@ addressed by any advisor round.
       part + this sensor can't do real-time proximity detection at spec with any
       candidate approach" — but only if that bar predates the result. The
       2026-09-01 SWIR survey
-      (`../stereo_camera_fpga/research/summaries/2026-09-01-swir-stereo-depth-perception.md`)
+      (`../fpga-research/research/summaries/2026-09-01-swir-stereo-depth-perception.md`)
       adds that matching failure is *spatially structured by material* (specular
       metal, glass, very low-albedo surfaces), so the metric must report where
       detection is unreliable, not just an aggregate rate.
@@ -446,11 +446,11 @@ addressed by any advisor round.
       higher windowed-ROI frame rate, or stereo as a last-metres confirm behind
       a monocular looming detector — bounds what any matching route can do, and
       is a legitimate kill finding diagnosable from geometry before M3
-      (`product-plan.md` §6 kill findings, `../stereo_camera_fpga/design/CLAUDE.md` §4).
+      (`product-plan.md` §6 kill findings, `../fpga-research/design/CLAUDE.md` §4).
 - [ ] **IMU / ego-motion estimation on the platform?** Decides whether Route C's
       two-frame approach-confirm is a motion-compensated predictor (Barry &
       Tedrake) or a plain N-of-M + monotonic-Δd test
-      (`../stereo_camera_fpga/design/CLAUDE.md` §7).
+      (`../fpga-research/design/CLAUDE.md` §7).
 - [ ] **UNKNOWN / blind-state output.** `product-plan.md` §2 currently specifies
       no valid/blind companion flag and no large-blind-region conservative
       policy for the textureless-object residual (§2.1 here). Specify both before
@@ -476,7 +476,7 @@ addressed by any advisor round.
       correct. This item is *only* about the technique, not the specific
       ~97.6 MB/s figure — see the next item for that.
 - [x] **Confirm the actual PSRAM part number.** Flagged 2026-08-06 by
-      `../stereo_camera_fpga/council/council-transcript-2026-08-06_1043.md`, resolved the same
+      `../fpga-research/council/council-transcript-2026-08-06_1043.md`, resolved the same
       day: fetched the GateMateA1-EVB Rev.C KiCad schematic directly from
       `github.com/OLIMEX/GateMateA1-EVB` and found two
       `LY68S3200SLT(SOIC-8_150mil)` instances (board refs **U7**, **U9**),
@@ -502,7 +502,7 @@ addressed by any advisor round.
       A/C rather than treating read and write as independent budgets.
 - [ ] **Rectification: the vertical-misalignment budget `k` must be a signed
       mechanical/optical spec, not a tolerance to design around.** (2026-09-03
-      council, `../stereo_camera_fpga/council/council-transcript-2026-09-03_1406.md`.)
+      council, `../fpga-research/council/council-transcript-2026-09-03_1406.md`.)
       A full per-pixel remap LUT is unusable in *both* memories — in BRAM it is
       ≈ 2.6 MB ≈ 16× the ~160 KB budget; re-read from PSRAM every frame it is
       ≈ 780 MB/s per camera / ~1.5 GB/s per stereo pair, ~15× the ~97.6 MB/s
@@ -560,7 +560,7 @@ addressed by any advisor round.
   bandwidth confirmed as a hard ceiling below raw camera ingest; streaming
   architecture is now a required constraint, not a nice-to-have.
 - **2026-08-06:** GateMate A1 research brief completed
-  (`../stereo_camera_fpga/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`) —
+  (`../fpga-research/research/summaries/2026-08-06-gatemate-a1-fpga-overview.md`) —
   resolved the effective-vs-theoretical PSRAM bandwidth open item
   (~97.6 MB/s effective, confirming rather than softening the 100 MB/s
   theoretical figure); surfaced the previously-unaccounted-for single-port
@@ -569,7 +569,7 @@ addressed by any advisor round.
   and that its lane count/bit rate vs. GateMate's LVDS-GPIO or SerDes
   capability is still unchecked.
 - **2026-08-06:** Council session
-  (`../stereo_camera_fpga/council/council-transcript-2026-08-06_1043.md`) reviewed this document
+  (`../fpga-research/council/council-transcript-2026-08-06_1043.md`) reviewed this document
   itself and caught a sourcing-collapse: §3 presented the PSRAM part
   identification (LY68S3200SLT) as confirmed ("sourced from the schematic
   + BOM, not guessed") when a same-day independent research pass on the
@@ -606,7 +606,7 @@ addressed by any advisor round.
   copied or moved from either project — the umbrella doc linked out
   instead. (Merged into this file 2026-09-03, below.)
 - **2026-09-01:** SWIR + depth-perception literature survey completed
-  (`../stereo_camera_fpga/research/summaries/2026-09-01-swir-stereo-depth-perception.md`, 6
+  (`../fpga-research/research/summaries/2026-09-01-swir-stereo-depth-perception.md`, 6
   papers; ../TODO.md task 1). Key conclusions: (a) SWIR's risk to the
   Census/SAD costs is *texture starvation* in fog / hot-metal / glass /
   low-light scenes, not spectral mismatch — the two same-band InGaAs
@@ -630,10 +630,10 @@ addressed by any advisor round.
   now the header + §0, its three combined-scope open items are folded into
   §7, and its 2026-08-12 creation entry into §8 (above). Relative links to
   the FPGA repo's `research/` and `council/` files were repointed to
-  `../stereo_camera_fpga/...` since this file now lives one level out.
+  `../fpga-research/...` since this file now lives one level out.
   `thesis-proposal2.md` deleted.
 - **2026-09-03:** Two council sessions on the sparse-vs-dense choice and on
-  rectification (`../stereo_camera_fpga/council/council-transcript-2026-09-03_1156.md`
+  rectification (`../fpga-research/council/council-transcript-2026-09-03_1156.md`
   and `...-2026-09-03_1406.md`). Verdicts:
   - **Dense (or semi-dense) is the thesis spine.** The sparse key-point front
     end is carried as a synthesis-only characterised row, not a built pipeline —
@@ -684,7 +684,7 @@ addressed by any advisor round.
     Track C configurations on equal footing with dense Census/SAD.** The
     council's *engineering* caveats still hold and are respected in the config
     spec: the built sparse pipeline is **bounded** (hard key-point cap, spatial
-    buckets, deterministic LRC + ordering + fixed-epipolar-offset verification,
+    buckets, deterministic ordering + fixed-epipolar-offset verification,
     sub-pixel) with **no RANSAC / triangulation / variable-length scatter-gather
     tail** — and the proximity-detection goal is what removes the need for that
     tail, since "is something close" needs a bounded set of near matches, not a
@@ -709,7 +709,7 @@ addressed by any advisor round.
   - **This document is demoted to the academic artefact** wrapped around the
     chosen approach. Header, line 20, and both CLAUDE.md authority registers
     (top-level and `thesis_proposal_vydar/`) repointed so `product-plan.md` is
-    the entry point; `README.md`, `TODO.md`, `stereo_camera_fpga/CLAUDE.md`
+    the entry point; `README.md`, `TODO.md`, `fpga-research/CLAUDE.md`
     repointed to match; `implementation-plan.md` reframed as "the RTL menu the
     approach search evaluates."
   - **§1 research question and the title are marked provisional**, to be
@@ -742,7 +742,7 @@ addressed by any advisor round.
     are reorganised around Route A (dense disparity map), Route B (bounded sparse
     key-point), Route C (band-limited plane-sweep / disparity-threshold trigger),
     presented without a ranking. `implementation-plan.md` gains **Config 7** for
-    Route C, folded in from `../stereo_camera_fpga/design/CLAUDE.md` (Stages 0–4,
+    Route C, folded in from `../fpga-research/design/CLAUDE.md` (Stages 0–4,
     `ESTIMATED` budget).
   - **Application scope folded in** (new §2.1 here; `product-plan.md` §3.1 /
     §2.7): moving platform / no static background model / no online background
@@ -751,7 +751,7 @@ addressed by any advisor round.
     **UNKNOWN state**. Corresponding §7 open items added (detection range vs.
     geometry, IMU availability, UNKNOWN-state output, alarm-consumer reaction
     time). This closes the "not yet folded into the planning docs" flag in
-    `../stereo_camera_fpga/design/CLAUDE.md` §1 / §7.
+    `../fpga-research/design/CLAUDE.md` §1 / §7.
   - **Startup / commercial framing de-emphasised** across `product-plan.md` — it
     now reads as the engineering plan for a research project with a concrete
     application goal. §2–§3 arithmetic, the verification legend, the fallback
@@ -765,7 +765,7 @@ addressed by any advisor round.
   boolean-or-zoned readout; **no per-pixel disparity map, no sparse key-point
   set**. This is the route earlier called **Route C**; its RTL form is
   `implementation-plan.md` Config 7 and its per-stage design is
-  `../stereo_camera_fpga/design/CLAUDE.md`. Consequences applied here: the header
+  `../fpga-research/design/CLAUDE.md`. Consequences applied here: the header
   goal block and §0 note the decision; §1 keeps the research question
   **provisional pending the advisor** but narrows it around this one approach
   (feasibility + characterisation of the range sweep — how small `K` can go, what
@@ -786,7 +786,7 @@ addressed by any advisor round.
   measured and reported but is no longer weighted highest and no longer gates
   the decision. This supersedes the 2026-08-06-era framing carried in
   `product-plan.md` §2.5/§5.1/§5.2 (updated in place, same date) and repeated
-  throughout `design_process/` and `../stereo_camera_fpga/design/CLAUDE.md`
+  throughout `design_process/` and `../fpga-research/design/CLAUDE.md`
   (updated in place). The Route A/B/C engineering-approach decision (above,
   2026-09-09) is **not** reopened by this — Route C was chosen primarily on
   timing-closure / on-chip-footprint grounds, not the FN/FP weighting — but the
@@ -832,7 +832,7 @@ likely real ceiling per both literature surveys) isn't validated until
 week 17, after 13 weeks are already sunk into algorithm tuning against
 idealized in-memory test vectors.
 
-Full reasoning: `../stereo_camera_fpga/council/council-transcript-2026-08-05_2141.md`.
+Full reasoning: `../fpga-research/council/council-transcript-2026-08-05_2141.md`.
 
 ---
 

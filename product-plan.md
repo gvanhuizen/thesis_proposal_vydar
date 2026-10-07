@@ -51,14 +51,14 @@ not a dense or semi-dense map. Boolean-vs-zoned for v1 remains an open sub-choic
   As of 2026-09-09 the build target is **Config 7** (Route C, the decided
   disparity-range sweep); Configs 1–6 are retained there as the alternatives that
   were considered and set aside.
-- **`../stereo_camera_fpga/`** — the FPGA build workspace (no RTL yet).
+- **`../fpga-research/`** — the FPGA build workspace (no RTL yet).
   **`../stereo_camera/`** — the supporting Raspberry Pi stereo rig.
-  **`../stereo_camera_fpga/research/synthesis/`** — the neutral technique /
+  **`../fpga-research/research/synthesis/`** — the neutral technique /
   device reference matrices.
 
 **Directory-layout dependency:** the relative links in this file assume the four
 repos stay siblings under one parent (`thesis/`). They are not git submodules;
-if this repo is moved on its own, the `../stereo_camera_fpga/...` links break.
+if this repo is moved on its own, the `../fpga-research/...` links break.
 
 ---
 
@@ -180,7 +180,7 @@ disparity) is assumed available to every candidate approach.
 
 A textureless close object with **no textured rim in the field of view** is an
 **irreducible** residual for any passive method without heavy regularisation
-(`../stereo_camera_fpga/design/CLAUDE.md` §1). It must not be reported silently
+(`../fpga-research/design/CLAUDE.md` §1). It must not be reported silently
 as "clear." The output therefore carries a companion **valid / blind (UNKNOWN)**
 flag, and a large, sustained UNKNOWN region inside the watch zone triggers a
 **conservative policy** — treat as a possible near object / degrade gracefully —
@@ -234,7 +234,7 @@ Bandwidth consequences of all of the above: `thesis-proposal.md` §3,
       usable stereo disparity in the last few metres; a longer standoff needs a
       wider baseline, a longer focal length, a higher (windowed-ROI) frame rate,
       or stereo as a last-metres confirm behind a monocular looming detector
-      (`../stereo_camera_fpga/design/CLAUDE.md` §4).
+      (`../fpga-research/design/CLAUDE.md` §4).
 - [ ] **Latency budget number** (§2.4) — the alarm consumer's reaction time; if
       it is not single-digit ms the loop does not close at 600 m/s and detection
       must move farther out.
@@ -258,7 +258,7 @@ Bandwidth consequences of all of the above: `thesis-proposal.md` §3,
 ### 3.1 Application constraints
 
 From the 2026-09-04 design exploration
-(`../stereo_camera_fpga/design/CLAUDE.md` §1, §4). They narrow the design well
+(`../fpga-research/design/CLAUDE.md` §1, §4). They narrow the design well
 beyond a generic fixed-mount zone monitor:
 
 - **Moving platform** — the pushbroom-stereo regime (Barry & Tedrake), not a
@@ -321,7 +321,7 @@ per-pixel confidence gates → spatial reduction → a two-frame Δd confirm →
 boolean/zoned readout. It never runs an `argmin` over `0..D` and never emits a
 disparity map. This is the route the earlier search called **Route C**; its RTL
 form is `implementation-plan.md` **Config 7** and its per-stage design is
-`../stereo_camera_fpga/design/CLAUDE.md`.
+`../fpga-research/design/CLAUDE.md`.
 
 What M2 / M3 (§6) now do is **characterise and parameterise this one approach**
 against the §2 decision on the §3 hardware, scored by §5 — not choose between
@@ -350,7 +350,7 @@ weighed:
   RTL: `implementation-plan.md` §6 Configs 1–4, 6.
 - **Route B — bounded sparse key-point matching (set aside).** Single-scale
   FAST/Harris → BRIEF or the reused Census word → 1-D along-row Hamming search →
-  bounded verify (LRC + ordering + fixed epipolar offset) → short list of matched
+  bounded verify (ordering + fixed epipolar offset) → short list of matched
   near points. **No RANSAC, no triangulation, no variable-length scatter/gather.**
   *Why set aside:* the detector + non-max suppression + top-K ranking are extra
   fabric structure, single-scale only (no image pyramid in 160 KB), list /
@@ -363,22 +363,22 @@ weighed:
   reason on its own to reopen the Route A/B/C decision (still closed, §4).
   Retained as an *additive* fast-path channel option inside the chosen
   approach for now, with sole-front-end reconsideration flagged for M2/M3
-  (`../stereo_camera_fpga/design/CLAUDE.md`, keypoint-pre-gate variant). RTL:
+  (`../fpga-research/design/CLAUDE.md`, keypoint-pre-gate variant). RTL:
   `implementation-plan.md` §6 Config 5.
 - **Route C — the decided approach: a direct range-threshold plane-sweep.** Never
   builds a map: Census-transform both images, compute the Hamming cost at just
   the `K` planes of a watch band, gate each pixel with per-pixel confidence
-  filters (texture gate + curve-shape reject + LRC), reduce the surviving near
+  filters (texture gate + curve-shape reject), reduce the surviving near
   mask spatially (U/V-disparity histograms), confirm with a two-frame Δd test,
   emit a boolean/zoned readout. *Strain on the A1 to resolve in M2:* the `K`-plane
   cost bank must run combinational at pixel rate — **this is the timing-closure
   gate** — and false positives must be held down without a static background model
   (the platform moves, §3.1). RTL: `implementation-plan.md` §6 Config 7; full
-  pipeline `../stereo_camera_fpga/design/CLAUDE.md`.
+  pipeline `../fpga-research/design/CLAUDE.md`.
 
 Background on how the dense few-plane form was weighed against bounded
 key-point, with techniques and FPGA literature:
-`../stereo_camera_fpga/research/synthesis/dense-vs-keypoint-for-threshold-alarm.md`
+`../fpga-research/research/synthesis/dense-vs-keypoint-for-threshold-alarm.md`
 (a point-in-time analysis; its "decide in M3" recommendation is superseded by the
 2026-09-09 decision).
 
@@ -396,8 +396,8 @@ detail for each is in `implementation-plan.md` §6.
 | **Dense SAD + box-filter moving sum** | A | SAD over a fixed window, O(1) window-sum update, WTA | Simplest arithmetic (subtract / abs / add on the carry chains); no serial dependency | Radiometrically fragile between two SWIR cameras with any gain/offset mismatch |
 | **AD-Census + cross-based aggregation** | A | Capped AD + Census cost, adaptive "+"-shaped support from 4 arm registers | Small extra logic on Census; cheap in registers, no big buffer | Adds a data-dependent stage; needs a synthesis run to confirm it stays cheap |
 | **Semi-dense seed-and-grow / ELAS-style** | A | Confident Census/Hamming seeds → guided fill along gradients, fan-out bounded on fabric | Emits far less than a dense map; reintroduces a smoothness prior cheaply | Bounding the growth on fabric without the data-dependent tail; every surveyed system used an ARM core to grow |
-| **Bounded sparse key-point** | B | Single-scale FAST/Harris + BRIEF or reused Census word + 1-D along-row Hamming; hard cap + spatial buckets + top-K; deterministic LRC + ordering + fixed epipolar-offset + parabola sub-pixel; **no RANSAC / triangulation / scatter-gather** | Lowest output bandwidth; reuses the Census datapath; the band decision needs a bounded set of near matches, not a point cloud | SWIR texture starvation → too few / too-weak key-points in exactly the fog / glass / low-light scenes the work targets |
-| **Band-limited plane-sweep / disparity-threshold trigger — DECIDED (2026-09-09)** | C | Census + Hamming cost at `K` watch-band planes only; per-pixel texture / curve-shape / LRC gates; per-frame far-prior; U/V-disparity spatial reduction; two-frame Δd confirm; boolean/zoned readout. **No `argmin` over `0..D`, no disparity map.** | Smallest on-chip footprint of the options considered; disparity search already collapsed to ~one plane; no cost volume, no dense-map writes | The `K`-plane Hamming bank must run combinational at pixel rate — the timing-closure gate; false positives without a static background model |
+| **Bounded sparse key-point** | B | Single-scale FAST/Harris + BRIEF or reused Census word + 1-D along-row Hamming; hard cap + spatial buckets + top-K; deterministic ordering + fixed epipolar-offset + parabola sub-pixel; **no RANSAC / triangulation / scatter-gather** | Lowest output bandwidth; reuses the Census datapath; the band decision needs a bounded set of near matches, not a point cloud | SWIR texture starvation → too few / too-weak key-points in exactly the fog / glass / low-light scenes the work targets |
+| **Band-limited plane-sweep / disparity-threshold trigger — DECIDED (2026-09-09)** | C | Census + Hamming cost at `K` watch-band planes only; per-pixel texture / curve-shape gates; per-frame far-prior; U/V-disparity spatial reduction; two-frame Δd confirm; boolean/zoned readout. **No `argmin` over `0..D`, no disparity map.** | Smallest on-chip footprint of the options considered; disparity search already collapsed to ~one plane; no cost volume, no dense-map writes | The `K`-plane Hamming bank must run combinational at pixel rate — the timing-closure gate; false positives without a static background model |
 | **Dual-path (H+V) SGM via dependency-relaxation** | A | H + V path aggregation only, recursion reading n pixels back, datapath replicated across n PUs | Avoids the width-scaling diagonal buffers and the wide comparator tree | Quantified accuracy cost +0.12 disparity error / +1.96 % bad-pixel per PU; only if resource headroom remains |
 | **Optical flow as an assist** | A/C | Frame-to-frame key-point tracking to amortise detection | Bounded if track count + iterations are capped | Orthogonal — lowers per-frame detect cost, does not itself produce disparity |
 
@@ -463,9 +463,9 @@ blocker. But motion blur ≈ the inter-frame step, so with ~3 frames the τ
 *precision* caps at ~15–35 % (≈ ±0.5–1 m at a 3 m edge) — a coarse OR-in flag,
 not a calibrated band; and `Δs ∝ f_px·S/Z²` sends small (≲ 3 cm) or far
 (≳ 10–15 m) targets sub-pixel. Full notes:
-`../stereo_camera_fpga/research/synthesis/time-to-contact-explained.md` §6–§7,
-`../stereo_camera_fpga/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`,
-`../stereo_camera_fpga/research/summaries/2026-09-08-monocular-depth-perception.md`.
+`../fpga-research/research/synthesis/time-to-contact-explained.md` §6–§7,
+`../fpga-research/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`,
+`../fpga-research/research/summaries/2026-09-08-monocular-depth-perception.md`.
 
 ---
 
@@ -550,7 +550,7 @@ pick.
       ~600 fps, or whether the geometry (not the matcher) is the blocker.
 - [ ] **IMU / ego-motion available?** — decides whether Route C's confirm stage
       is a motion-compensated predictor (Barry & Tedrake) or a plain
-      N-of-M + monotonic-Δd test (`../stereo_camera_fpga/design/CLAUDE.md` §7).
+      N-of-M + monotonic-Δd test (`../fpga-research/design/CLAUDE.md` §7).
 
 ---
 
@@ -700,7 +700,7 @@ rolls up the open items.
     disparity map), Route B (bounded sparse key-point), Route C (band-limited
     plane-sweep / disparity-threshold trigger) — presented without a ranking
     (§4.1). `implementation-plan.md` §6 gains **Config 7** for Route C, folded
-    in from `../stereo_camera_fpga/design/CLAUDE.md`.
+    in from `../fpga-research/design/CLAUDE.md`.
   - **Application constraints folded in** (§3.1, §2.7): moving platform / no
     static background model, closing speed up to ~600 m/s, anything-near-is-valid,
     purely passive, and the textureless-object **UNKNOWN state**.
@@ -719,16 +719,16 @@ rolls up the open items.
   pass-with-caveats — per-frame image expansion is supra-pixel for extended
   targets in the close band (not a kill), but blur ≈ the inter-frame step caps τ
   precision at ~15–35 %, so it stays a coarse OR-in flag only. Notes:
-  `../stereo_camera_fpga/research/synthesis/time-to-contact-explained.md` §6–§7,
-  `../stereo_camera_fpga/research/summaries/2026-09-08-monocular-depth-perception.md`,
-  `../stereo_camera_fpga/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`.
+  `../fpga-research/research/synthesis/time-to-contact-explained.md` §6–§7,
+  `../fpga-research/research/summaries/2026-09-08-monocular-depth-perception.md`,
+  `../fpga-research/research/summaries/2026-09-08-ttc-optical-flow-fpga.md`.
 - **2026-09-09:** **Engineering approach decided (founder direction).** The
   open approach search over three peer routes is **closed**: the system will
   perform a **band-limited disparity-range sweep** — cost tested only at the `K`
   disparity planes of the watch band, gate / reduce / confirm, boolean-or-zoned
   readout; **no per-pixel disparity map, no sparse key-point set**. This is
   **Route C** (`implementation-plan.md` Config 7); the per-stage design is
-  `../stereo_camera_fpga/design/CLAUDE.md`. Consequences applied here: §1–§2
+  `../fpga-research/design/CLAUDE.md`. Consequences applied here: §1–§2
   (output granularity settled — boolean/zoned, boolean-vs-zoned still open);
   §4 retitled and rewritten as the decision plus the Route A / Route B
   alternatives set aside (with the reasoning kept); §5 recast from "pick a
@@ -742,6 +742,15 @@ rolls up the open items.
   further; the decision post-dates the meeting and is recorded in
   `../presentations/CLAUDE.md`. Point-in-time research/synthesis docs and council
   snapshots are left unedited.
+- **2026-09-29:** **Left/right consistency (LRC) / uniqueness dropped from
+  scope (founder call) — not being designed, for any route.** Route C's
+  per-pixel pre-filter stack is now **two** gates (texture/gradient + curve-shape),
+  not three; the residual it covered (occlusion, rectification-drift phantoms)
+  is an accepted gap rather than a checked-for case. Updated here (§4.1, §4.2),
+  in `implementation-plan.md`, `../fpga-research/design/` (`CLAUDE.md` and
+  `pipeline/`), `../design_process/`, and the `stereo_camera/` reference-model
+  code/docs. Left unedited in point-in-time research/synthesis docs and council
+  snapshots, consistent with the 2026-09-09 entry above.
 
 ### Open items (rolled up)
 
