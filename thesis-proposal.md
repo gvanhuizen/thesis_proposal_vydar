@@ -524,7 +524,7 @@ addressed by any advisor round.
       the sustained multiplies/s the fabric delivers at pixel rate, are
       themselves Track B characterisation results. The Pi rig's own calibration
       numbers are moot — it is throwaway test scaffolding. Full detail:
-      `../TODO.md` item 3.
+      `../design_process/action-plan.md` Step 1 "W4: Rectification `k`".
 - [ ] **SWIR camera LVDS interface vs. GateMate LVDS-GPIO/SerDes fit** —
       the QDI sensor's LVDS lane count and per-lane bit rate haven't been
       checked against GateMate's DDR-GPIO LVDS timing (no max LVDS toggle

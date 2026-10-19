@@ -8,7 +8,7 @@ This is a small, standalone git repo holding the thesis planning documents for a
 master's thesis built from two separate implementations that live in sibling
 directories on disk, each their own git repo:
 
-- `../stereo_camera/` (github.com/gvanhuizen/stereo_camera)
+- `../../software-sandbox/` (github.com/gvanhuizen/stereo_camera)
 - `../fpga-research/` (github.com/gvanhuizen/stereo_camera_fpga — directory renamed locally, GitHub repo not yet renamed)
 
 There is no source code here, no build/lint/test tooling, and none is expected.
@@ -39,7 +39,7 @@ Three tracked files:
   (§5), the open-items list (§7), and the chronological project decision log
   (§8). It used to be two files (`thesis-proposal.md` + `thesis-proposal2.md`);
   they were merged 2026-09-03. Camera-rig detail is not duplicated here — it
-  lives in `../stereo_camera/`.
+  lives in `../../software-sandbox/`.
 - **`implementation-plan.md`** — the **RTL detail**: a consolidated spec sheet,
   the constraint → viable-technique chain, and the configurations with the
   reasoning and rejections. **As of 2026-09-09 the build target is Config 7**
@@ -64,7 +64,7 @@ Also present, **not authoritative** — point-in-time prep artifacts (like the
 ## Directory-layout dependency
 
 The relative links in `product-plan.md`, `thesis-proposal.md` and
-`implementation-plan.md` (`../stereo_camera/...`, `../fpga-research/...`)
+`implementation-plan.md` (`../../software-sandbox/...`, `../fpga-research/...`)
 assume the repos stay siblings under the same parent directory (currently
 `thesis/`). If this repo is ever cloned or moved on its own, those links break —
 they are not git submodules and there's no fetch/resolve mechanism, just
@@ -94,7 +94,7 @@ relative filesystem paths.
   docs above draw on. `../fpga-research/research/` holds the paper surveys
   (`summaries/`) and the other synthesis docs; `../fpga-research/council/`
   holds the `/llm-council` deliberation snapshots referenced in the decision log.
-- `../stereo_camera/README.md` and `../stereo_camera/literature/NOTES.md`
+- `../../software-sandbox/README.md` and `../../software-sandbox/literature/NOTES.md`
   remain authoritative for the camera-rig work and baseline/accuracy
   literature — that half's detail is not copied into `thesis-proposal.md`.
 - `../design_process/` (sibling repo, created 2026-09-09) recasts the FPGA effort
@@ -144,7 +144,7 @@ resolution
 surface (that framing was dropped 2026-09-03 — see the proposal's decision log).
 
 FPGA stereo processing (`fpga-research/`) is the expected primary
-research contribution; the stereo-vision camera rig (`stereo_camera/`) is
+research contribution; the stereo-vision camera rig (`../../software-sandbox/`) is
 supporting/practical work. This is the founder's current best guess, not
 settled scope — when it changes (e.g. after M2/M3 results land, or after advisor
 feedback), update this section, `product-plan.md`, and the header + §0 of

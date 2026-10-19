@@ -541,7 +541,7 @@ pick.
       synthetic SWIR (`thesis-proposal.md` §7).
 - [ ] **Rectification `k` spec in hand** — signed mechanical/optical budget for
       the real head, target ≤ ±16 rows, by ~week 4 (`thesis-proposal.md` §7,
-      `../TODO.md` item 3).
+      `../design_process/action-plan.md` Step 1 "W4: Rectification `k`").
 - [ ] **Dataset-plumbing path for M3** — how stored frames reach the device
       (UART / flash / streamed to mimic the camera) (`implementation-plan.md`
       §8).
@@ -770,7 +770,7 @@ From §5.5:
 - [ ] Threshold-alarm quality bar quantified (`thesis-proposal.md` §7).
 - [ ] SWIR ground-truth / benchmark plan chosen (`thesis-proposal.md` §7).
 - [ ] Rectification `k` spec in hand, by ~week 4 (`thesis-proposal.md` §7,
-      `../TODO.md` item 3).
+      `../design_process/action-plan.md` Step 1 "W4: Rectification `k`").
 - [ ] Dataset-plumbing path for M3 (`implementation-plan.md` §8).
 - [ ] Detection-range vs. sensing geometry — is the standoff reachable at all.
 - [ ] IMU / ego-motion available? — sets Route C's confirm stage.
